@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
     "@betterman/db": "workspace:*",
@@ -23,6 +24,7 @@
     "autoprefixer": "10.4.20",
     "eslint-config-next": "15.0.0",
     "postcss": "8.4.47",
+    "sharp": "0.33.5",
     "tailwindcss": "3.4.13",
     "typescript": "5.6.3"
   }

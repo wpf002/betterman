@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Spectral } from 'next/font/google';
 import { chrome, TYPEKIT_KIT_ID } from '@betterman/ui';
 import { SiteHeader } from './_components/site-header';
+import { ServiceWorkerRegistrar } from './_components/service-worker';
 import '@betterman/ui/tokens.css';
 import '@betterman/ui/styles.css';
 import '@betterman/ui/skins.css';
@@ -27,6 +28,28 @@ export const metadata: Metadata = {
   },
   description:
     'BetterMornings, Good Trouble and Josiah Jones — three publications, one place to read them.',
+  manifest: '/manifest.webmanifest',
+  applicationName: 'BetterMan Reader',
+  icons: {
+    icon: [{ url: '/icons/favicon-32.png', sizes: '32x32', type: 'image/png' }],
+    apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180' }],
+  },
+  /**
+   * iOS ignores the manifest for home-screen installs and reads these instead.
+   * `capable` is what makes the installed app run standalone — which is also
+   * the precondition for Web Push on iOS 16.4+ (spec §10).
+   */
+  appleWebApp: {
+    capable: true,
+    title: 'BetterMan',
+    statusBarStyle: 'default',
+  },
+  formatDetection: { telephone: false },
+  /**
+   * Next emits the standard `mobile-web-app-capable`. Older iOS only reads the
+   * apple-prefixed spelling, and it costs one tag to cover both.
+   */
+  other: { 'apple-mobile-web-app-capable': 'yes' },
 };
 
 export const viewport: Viewport = {
@@ -50,6 +73,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="bm-shell min-h-dvh">
         <SiteHeader />
         <main>{children}</main>
+        <ServiceWorkerRegistrar />
       </body>
     </html>
   );

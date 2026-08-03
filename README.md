@@ -166,6 +166,28 @@ database alone — no network, no credentials. This is what the `raw_payloads`
 table exists for, and it is the only way to fix the archive once a mailbox app
 password has been revoked.
 
+## PWA and offline
+
+Icons are generated from the committed mark, so there is one piece of artwork:
+
+```bash
+pnpm --filter @betterman/web icons
+```
+
+The service worker (`apps/web/public/sw.js`) is hand-written and registers in
+**production only** — a worker caching pages while you edit them is a debugging
+trap. Navigations are network-first with a cached fallback and `/offline` as the
+last resort; build assets are cache-first.
+
+`/offline-manifest` returns the URLs of everything published in the last 30
+days, and the worker precaches them on activate. It also follows each page into
+its JavaScript, CSS and fonts — caching the HTML alone leaves an offline visit
+showing a client-side error instead of the piece, and next/font emits Spectral
+inside CSS where an HTML-only scan would miss it.
+
+Verified by stopping the server outright: reading pages, in-app navigation and
+the offline fallback all resolve from cache.
+
 ## Phases
 
 Phase 0 (foundation) is complete. Subsequent phases are gated on the previous
@@ -177,7 +199,7 @@ one's acceptance criteria; see the build spec.
 | 1 | Ingest — RSS backfill, email parser, normalizer | ✅ (see caveats above) |
 | 2 | Chrome and archives | ✅ |
 | 3 | The three skins | ✅ |
-| 4 | PWA + offline | |
+| 4 | PWA + offline | ✅ |
 | 5 | Accounts, bookmarks, saved Right Next Steps | |
 | 6 | Notifications | |
 | 7 | Search + Scripture index | |
