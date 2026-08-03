@@ -82,7 +82,7 @@ export function startIngestScheduler(log: Logger): Scheduler {
 
     const since = new Date(Date.now() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
     const result = await withTimeout(
-      ingestFromMailbox(mailbox, { since, includeTrash: true }),
+      ingestFromMailbox(mailbox, { since, includeTrash: true, includeSpam: true }),
       SOURCE_TIMEOUT_MS,
       'devotional poll',
     );

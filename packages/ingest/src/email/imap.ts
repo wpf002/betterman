@@ -25,6 +25,15 @@ export interface MailboxCredentials {
 export interface MailboxIngestOptions {
   /** Also read deleted mail. Off by default — deleting is a decision. */
   includeTrash?: boolean;
+  /**
+   * Also read spam.
+   *
+   * A newly subscribed address is exactly what Gmail filters, and a devotional
+   * in Spam is invisible to All Mail — the app would look broken while the
+   * mail was arriving perfectly. The search is scoped to one sender, so this
+   * reads nothing else.
+   */
+  includeSpam?: boolean;
   /** Rewrite rows we already have, replaying them through the current parser. */
   force?: boolean;
   /**
@@ -62,6 +71,7 @@ function resolveMailboxes(
   boxes: ListResponse[],
   explicit: string | undefined,
   includeTrash: boolean,
+  includeSpam = false,
 ): string[] {
   if (explicit) return [explicit];
 
@@ -72,13 +82,23 @@ function resolveMailboxes(
     boxes.find((b) => /all mail/i.test(b.path))?.path ??
     'INBOX';
 
-  if (!includeTrash) return [all];
+  const extra: string[] = [];
 
-  const trash =
-    boxes.find((b) => b.specialUse === '\\Trash')?.path ??
-    boxes.find((b) => /trash/i.test(b.path))?.path;
+  if (includeTrash) {
+    const trash =
+      boxes.find((b) => b.specialUse === '\\Trash')?.path ??
+      boxes.find((b) => /trash/i.test(b.path))?.path;
+    if (trash) extra.push(trash);
+  }
 
-  return trash ? [all, trash] : [all];
+  if (includeSpam) {
+    const spam =
+      boxes.find((b) => b.specialUse === '\\Junk')?.path ??
+      boxes.find((b) => /spam|junk/i.test(b.path))?.path;
+    if (spam) extra.push(spam);
+  }
+
+  return [all, ...extra];
 }
 
 export async function ingestFromMailbox(
@@ -118,6 +138,7 @@ export async function ingestFromMailbox(
       await client.list(),
       credentials.mailbox,
       Boolean(options.includeTrash),
+      Boolean(options.includeSpam),
     );
     log(`mailboxes: ${mailboxes.join(', ')}`);
 
