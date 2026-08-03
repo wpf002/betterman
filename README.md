@@ -133,7 +133,7 @@ one's acceptance criteria; see the build spec.
 | --- | --- | --- |
 | 0 | Foundation — repo, schema, CI, tokens, logos | ✅ |
 | 1 | Ingest — RSS backfill, email parser, normalizer | ✅ (see caveats above) |
-| 2 | Chrome and archives | |
+| 2 | Chrome and archives | ✅ |
 | 3 | The three skins | |
 | 4 | PWA + offline | |
 | 5 | Accounts, bookmarks, saved Right Next Steps | |
