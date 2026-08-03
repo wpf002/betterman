@@ -21,7 +21,6 @@ interface Publication {
   slug: string;
   key: string;
   name: string;
-  cadence: string;
 }
 
 type Permission = 'default' | 'granted' | 'denied' | 'unsupported';
@@ -139,10 +138,7 @@ export function NotificationSettings({
               key={pub.slug}
               className="flex items-center justify-between gap-6 border-b border-hair py-6"
             >
-              <div>
-                <h2 className="text-[20px] font-normal leading-tight">{pub.name}</h2>
-                <p className="mt-1 text-[15px] text-mute">{pub.cadence}</p>
-              </div>
+              <h2 className="text-[20px] font-normal leading-tight">{pub.name}</h2>
 
               <button
                 type="button"

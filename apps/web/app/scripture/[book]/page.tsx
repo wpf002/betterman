@@ -19,10 +19,10 @@ export default async function BookPage({ params }: { params: Promise<{ book: str
   if (chapters.length === 0) notFound();
 
   return (
-    <div className="mx-auto max-w-shell px-5 py-12 sm:py-16">
+    <div className="mx-auto max-w-shell px-5 py-10 sm:py-16">
       <nav className="mb-8">
-        <Link href="/scripture" className="bm-eyebrow hover:text-ink">
-          ← Scripture
+        <Link href="/search" className="bm-eyebrow hover:text-ink">
+          ← Search
         </Link>
       </nav>
 

@@ -38,7 +38,7 @@ export function ArchiveList({
           <li key={entry.id} className="border-b border-hair">
             <Link
               href={`/${publication.slug}/${entry.slug}`}
-              className="group block py-6 transition-colors hover:bg-paper/60"
+              className="group -mx-4 block rounded-sm px-4 py-6 transition-colors hover:bg-paper/70 active:bg-paper sm:-mx-5 sm:px-5"
             >
               <time
                 dateTime={isDevotional ? entry.slug : toISODate(entry.publishedAt)}

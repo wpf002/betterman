@@ -33,7 +33,7 @@ export default async function ChapterPage({
   const mentioned = entries.filter((e) => !e.isPrimary);
 
   return (
-    <div className="mx-auto max-w-shell px-5 py-12 sm:py-16">
+    <div className="mx-auto max-w-shell px-5 py-10 sm:py-16">
       <nav className="mb-8">
         <Link href={`/scripture/${slug}`} className="bm-eyebrow hover:text-ink">
           ← {book}
@@ -73,7 +73,10 @@ function PassageList({
     <ul className="mt-4 border-t border-hair">
       {entries.map((entry) => (
         <li key={`${entry.itemId}-${entry.displayRef}`} className="border-b border-hair">
-          <Link href={entry.href} className="group block py-6">
+          <Link
+            href={entry.href}
+            className="group -mx-4 block rounded-sm px-4 py-6 transition-colors hover:bg-paper/70 active:bg-paper sm:-mx-5 sm:px-5"
+          >
             <p className="bm-eyebrow">
               {entry.displayRef} · {entry.publication} · {formatLongDate(entry.publishedAt)}
             </p>

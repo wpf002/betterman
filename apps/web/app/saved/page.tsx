@@ -1,9 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSessionUser } from '@/lib/auth/session';
-import { getBookmarks, getSavedSteps } from '@/lib/reading/queries';
-import { completeNextStep } from '@/lib/reading/actions';
-import { formatLongDate } from '@/lib/dates';
+import { getBookmarks } from '@/lib/reading/queries';
 
 export const metadata = { title: 'Saved' };
 export const dynamic = 'force-dynamic';
@@ -12,87 +10,42 @@ export default async function SavedPage() {
   const user = await getSessionUser();
   if (!user) redirect('/sign-in?next=%2Fsaved');
 
-  const [bookmarks, steps] = await Promise.all([getBookmarks(user.id), getSavedSteps(user.id)]);
-  const open = steps.filter((s) => !s.completedAt);
-  const done = steps.filter((s) => s.completedAt);
+  const bookmarks = await getBookmarks(user.id);
 
   return (
-    <div className="mx-auto max-w-shell px-5 py-12 sm:py-16">
-      <p className="bm-eyebrow">Saved</p>
-      <h1 className="mt-4 text-display-sm sm:text-display-md">Your reading</h1>
+    <div className="mx-auto max-w-shell px-5 py-8 sm:py-14">
+      <nav className="mb-8">
+        <Link href="/" className="bm-eyebrow hover:text-ink">
+          ← All publications
+        </Link>
+      </nav>
 
-      {/* Right Next Steps first — they are commitments, not references. */}
-      <section className="mt-12">
-        <h2 className="bm-eyebrow">Right next steps</h2>
+      <h1 className="text-display-sm sm:text-display-md">Saved</h1>
+      <p className="mt-4 max-w-measure text-mute">Pieces you kept to come back to.</p>
 
-        {steps.length === 0 ? (
-          <p className="mt-4 max-w-measure text-mute">
-            When a devotional gives you a next step worth keeping, save it and it will wait here.
-          </p>
-        ) : (
-          <ul className="mt-4 border-t border-hair">
-            {[...open, ...done].map((step) => (
-              <li key={step.itemId} className="border-b border-hair py-6">
-                <div className="flex items-start gap-4">
-                  <form action={completeNextStep.bind(null, step.itemId, !step.completedAt)}>
-                    <button
-                      type="submit"
-                      aria-pressed={Boolean(step.completedAt)}
-                      aria-label={
-                        step.completedAt ? 'Mark as not done' : 'Mark this step done'
-                      }
-                      className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-colors ${
-                        step.completedAt
-                          ? 'border-clay bg-clay text-white'
-                          : 'border-hair hover:border-clay'
-                      }`}
-                    >
-                      {step.completedAt ? '✓' : ''}
-                    </button>
-                  </form>
-
-                  <div className="min-w-0">
-                    <p
-                      className={`max-w-measure text-[17px] ${
-                        step.completedAt ? 'text-mute line-through' : 'text-ink'
-                      }`}
-                    >
-                      {step.stepText}
-                    </p>
-                    <Link
-                      href={step.href}
-                      className="bm-eyebrow mt-2 inline-block hover:text-clay-deep"
-                    >
-                      {step.title}
-                    </Link>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="mt-16">
-        <h2 className="bm-eyebrow">Bookmarks</h2>
-
-        {bookmarks.length === 0 ? (
-          <p className="mt-4 max-w-measure text-mute">Nothing bookmarked yet.</p>
-        ) : (
-          <ul className="mt-4 border-t border-hair">
-            {bookmarks.map((piece) => (
-              <li key={piece.itemId} className="border-b border-hair">
-                <Link href={piece.href} className="group block py-6">
-                  <p className="bm-eyebrow">
-                    {piece.publication} · {formatLongDate(piece.publishedAt)}
-                  </p>
-                  <p className="mt-2 text-[22px] group-hover:text-clay-deep">{piece.title}</p>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      {bookmarks.length === 0 ? (
+        <p className="mt-10 max-w-measure text-mute">
+          Nothing saved yet. Open a piece and tap <em className="bm-emphasis">Bookmark</em>.
+        </p>
+      ) : (
+        <ul className="mt-10 border-t border-hair">
+          {bookmarks.map((piece) => (
+            <li key={piece.itemId} className="border-b border-hair">
+              <Link
+                href={piece.href}
+                className="group -mx-4 block rounded-sm px-4 py-6 transition-colors hover:bg-paper/70 active:bg-paper sm:-mx-5 sm:px-5"
+              >
+                <p className="bm-eyebrow">
+                  {piece.publication} · {piece.dateLabel}
+                </p>
+                <h2 className="mt-2 text-[22px] leading-tight group-hover:text-clay-deep">
+                  {piece.title}
+                </h2>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

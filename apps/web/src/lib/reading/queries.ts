@@ -1,5 +1,6 @@
 import { prisma } from '@betterman/db';
 import { PUBLICATIONS } from '../publications';
+import { formatDevotionalDate, formatLongDate } from '../dates';
 
 /** What the reader has done with one piece. Null user → all false. */
 export interface ReaderState {
@@ -41,7 +42,11 @@ export interface SavedPiece {
   href: string;
   publication: string;
   title: string;
-  publishedAt: Date;
+  /**
+   * Pre-formatted, because a devotional's date is a calendar day stored as UTC
+   * midnight — rendering it in Central slides it back a day.
+   */
+  dateLabel: string;
 }
 
 export interface SavedStep extends SavedPiece {
@@ -51,8 +56,11 @@ export interface SavedStep extends SavedPiece {
 
 const hrefFor = (sourceKey: string, slug: string) => {
   const pub = PUBLICATIONS.find((p) => p.key === sourceKey);
-  return pub ? { href: `/${pub.slug}/${slug}`, publication: pub.name } : null;
+  return pub ? { href: `/${pub.slug}/${slug}`, publication: pub.name, slug: pub.slug } : null;
 };
+
+const labelFor = (pubSlug: string, itemSlug: string, publishedAt: Date) =>
+  pubSlug === 'bettermornings' ? formatDevotionalDate(itemSlug) : formatLongDate(publishedAt);
 
 export async function getBookmarks(userId: string): Promise<SavedPiece[]> {
   const rows = await prisma.bookmark.findMany({
@@ -75,7 +83,7 @@ export async function getBookmarks(userId: string): Promise<SavedPiece[]> {
         href: link.href,
         publication: link.publication,
         title: row.item.title,
-        publishedAt: row.item.publishedAt,
+        dateLabel: labelFor(link.slug, row.item.slug, row.item.publishedAt),
       },
     ];
   });
@@ -104,7 +112,7 @@ export async function getSavedSteps(userId: string): Promise<SavedStep[]> {
         href: link.href,
         publication: link.publication,
         title: row.item.title,
-        publishedAt: row.item.publishedAt,
+        dateLabel: labelFor(link.slug, row.item.slug, row.item.publishedAt),
         stepText: row.stepText,
         completedAt: row.completedAt,
       },

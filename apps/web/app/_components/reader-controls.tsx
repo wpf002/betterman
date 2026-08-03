@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { toggleBookmark, saveNextStep } from '@/lib/reading/actions';
+import { toggleBookmark } from '@/lib/reading/actions';
 import type { ReaderState } from '@/lib/reading/queries';
 
 /**
@@ -13,13 +13,11 @@ export function ReaderControls({
   path,
   state,
   signedIn,
-  hasNextStep,
 }: {
   itemId: string;
   path: string;
   state: ReaderState;
   signedIn: boolean;
-  hasNextStep: boolean;
 }) {
   if (!signedIn) {
     return (
@@ -51,21 +49,6 @@ export function ReaderControls({
         </button>
       </form>
 
-      {hasNextStep ? (
-        <form action={saveNextStep.bind(null, itemId, path)}>
-          <button
-            type="submit"
-            aria-pressed={state.nextStepSaved}
-            className={`rounded-pill border px-5 py-2.5 text-[12px] font-bold uppercase tracking-[2px] transition-colors ${
-              state.nextStepSaved
-                ? 'border-clay bg-clay text-white hover:bg-clay-deep'
-                : 'border-hair text-mute hover:border-clay hover:text-clay-deep'
-            }`}
-          >
-            {state.nextStepSaved ? 'Step saved' : 'Save this step'}
-          </button>
-        </form>
-      ) : null}
     </div>
   );
 }
