@@ -2,50 +2,25 @@
  * Backfill BetterMornings from a mailbox over IMAP.
  *
  *   pnpm ingest:email-imap
+ *   pnpm ingest:email-imap --include-trash   # also read deleted mail
+ *   pnpm ingest:email-imap --reparse         # replay through the current parser
  *
- * This is how the historical archive gets in: the public site has no
- * devotional archive (betterman.com/daily-devotional is a signup page), so the
- * mailbox is the only source.
+ * The public site has no devotional archive, so a mailbox is the only source
+ * of history. Ongoing delivery is handled by the hourly poll in the API and by
+ * POST /ingest/email — all three share one normalizer, so a devotional cannot
+ * parse differently depending on how it arrived.
  *
- * Credentials come from the environment — never from the command line, so they
- * do not land in shell history:
- *
- *   IMAP_HOST=imap.gmail.com
- *   IMAP_PORT=993
- *   IMAP_USER=<the subscribed mailbox>
- *   IMAP_PASSWORD=<app password, NOT the account password>
- *
- * For Gmail this needs an App Password (Google Account → Security → 2-Step
- * Verification → App passwords). Generate it yourself and put it in .env; it
- * is never printed or logged here.
- *
- * Runs against the same normalizer as the live webhook, so a backfilled
- * devotional and a delivered one cannot drift apart. Re-running is a no-op.
+ * Credentials come from the environment, never the command line, so they do
+ * not land in shell history. For Gmail, IMAP_PASSWORD must be an App Password.
  */
-import { ImapFlow } from 'imapflow';
-import { IngestStatus, SourceKey, prisma } from '@betterman/db';
-import { BETTERMORNINGS_SENDER } from '../src/email/mime';
-import { ingestDevotionalEmail, storeRawPayload } from '../src/pipeline/upsert';
-import { finishRun, startRun } from '../src/pipeline/run';
+import { prisma } from '@betterman/db';
+import { ingestFromMailbox, mailboxCredentialsFromEnv } from '../src/email/imap.js';
 
-const { IMAP_HOST, IMAP_PORT, IMAP_USER, IMAP_PASSWORD, IMAP_MAILBOX } = process.env;
-
-/** --reparse rewrites rows we already have, replaying them through the
- *  current parser. Use it after a parser fix. */
-const force = process.argv.includes('--reparse');
-
-/**
- * --include-trash also reads deleted mail.
- *
- * Off by default: deleting is a decision, and quietly resurrecting someone's
- * deleted mail is not ours to make. But a reader who deletes the daily email
- * after reading it has still read it, and the archive should hold it — so the
- * flag exists.
- */
-const includeTrash = process.argv.includes('--include-trash');
+const args = process.argv.slice(2);
 
 async function main() {
-  if (!IMAP_HOST || !IMAP_USER || !IMAP_PASSWORD) {
+  const credentials = mailboxCredentialsFromEnv();
+  if (!credentials) {
     console.error(
       'Missing IMAP credentials. Set IMAP_HOST, IMAP_USER and IMAP_PASSWORD in .env.\n' +
         'For Gmail, IMAP_PASSWORD must be an App Password, not the account password.',
@@ -54,117 +29,17 @@ async function main() {
     return;
   }
 
-  const source = await prisma.source.findUniqueOrThrow({
-    where: { key: SourceKey.BETTERMORNINGS },
+  const result = await ingestFromMailbox(credentials, {
+    includeTrash: args.includes('--include-trash'),
+    force: args.includes('--reparse'),
+    log: (m) => console.log(m),
   });
-
-  const client = new ImapFlow({
-    host: IMAP_HOST,
-    port: Number(IMAP_PORT ?? 993),
-    secure: true,
-    // Google displays app passwords in "abcd efgh ijkl mnop" groups; the
-    // spaces are presentational and must not be sent.
-    auth: { user: IMAP_USER, pass: IMAP_PASSWORD.replace(/\s+/g, '') },
-    logger: false,
-  });
-
-  await client.connect();
-
-  // Default to the archive, not the inbox. On Gmail, reading a message out of
-  // the inbox does not remove it, but archiving does — so INBOX holds only
-  // what has not been filed yet, and a backfill run against it silently finds
-  // almost nothing. The \All special-use mailbox ("[Gmail]/All Mail") holds
-  // everything. IMAP_MAILBOX still overrides when set.
-  const boxes = await client.list();
-  const mailboxes = IMAP_MAILBOX
-    ? [IMAP_MAILBOX]
-    : [
-        boxes.find((b) => b.specialUse === '\\All')?.path ??
-          boxes.find((b) => /all mail/i.test(b.path))?.path ??
-          'INBOX',
-        ...(includeTrash
-          ? [
-              boxes.find((b) => b.specialUse === '\\Trash')?.path ??
-                boxes.find((b) => /trash/i.test(b.path))?.path,
-            ].filter((p): p is string => Boolean(p))
-          : []),
-      ];
-
-  console.log(`mailboxes: ${mailboxes.join(', ')}`);
-
-  const run = await startRun(source.id, 'email-imap-backfill');
-  const counters = { seen: 0, created: 0, updated: 0, skipped: 0, inReview: 0 };
-  const held: string[] = [];
-
-  try {
-    for (const mailbox of mailboxes) {
-      const lock = await client.getMailboxLock(mailbox);
-      try {
-    // `search` returns SEQUENCE numbers unless uid:true is passed. Feeding
-    // those to a uid-based fetch silently matches nothing.
-    const uids = await client.search({ from: BETTERMORNINGS_SENDER }, { uid: true });
-    console.log(`  ${mailbox}: ${uids ? uids.length : 0} message(s)`);
-
-    for (const uid of uids || []) {
-      const message = await client.fetchOne(String(uid), { source: true }, { uid: true });
-      if (!message || !message.source) {
-        console.log(`  ! uid ${uid}: could not fetch source — skipped`);
-        counters.skipped += 1;
-        continue;
-      }
-      counters.seen += 1;
-
-      const raw = message.source.toString('utf8');
-      const { parseMime, isBettermorningsEmail } = await import('../src/email/mime');
-      const mail = await parseMime(raw);
-
-      if (!isBettermorningsEmail(mail) || !mail.html) {
-        counters.skipped += 1;
-        continue;
-      }
-
-      await storeRawPayload({
-        sourceId: source.id,
-        runId: run.id,
-        kind: 'email-mime',
-        externalId: mail.messageId,
-        body: raw,
-      });
-
-      const result = await ingestDevotionalEmail(source, mail.html, {
-        messageId: mail.messageId ?? undefined,
-        receivedAt: mail.date ?? undefined,
-        force,
-      });
-
-      if (result.outcome === 'created') counters.created += 1;
-      else if (result.outcome === 'updated') counters.updated += 1;
-      else counters.skipped += 1;
-
-      if (result.status === 'REVIEW') {
-        counters.inReview += 1;
-        held.push(`${result.dateKey} (q=${result.parseQuality.toFixed(3)})`);
-      }
-    }
-
-      } finally {
-        lock.release();
-      }
-    }
-
-    await finishRun(run.id, counters, IngestStatus.SUCCESS);
-  } catch (err) {
-    await finishRun(run.id, counters, IngestStatus.FAILED, String(err));
-    throw err;
-  } finally {
-    await client.logout();
-  }
 
   console.log(
-    `\nseen ${counters.seen}, created ${counters.created}, updated ${counters.updated}, ` +
-      `skipped ${counters.skipped}, in review ${counters.inReview}`,
+    `\nseen ${result.seen}, created ${result.created}, updated ${result.updated}, ` +
+      `skipped ${result.skipped}, in review ${result.inReview}`,
   );
-  if (held.length) console.log(`held for review:\n  ${held.join('\n  ')}`);
+  if (result.held.length) console.log(`held for review:\n  ${result.held.join('\n  ')}`);
 }
 
 main()

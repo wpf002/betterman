@@ -8,6 +8,7 @@ export * from './html/sanitize.js';
 export * from './substack/archive.js';
 export * from './email/mime.js';
 export * from './email/payload.js';
+export * from './email/imap.js';
 export * from './substack/normalize.js';
 export * from './pipeline/upsert.js';
 export * from './pipeline/run.js';
