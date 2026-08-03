@@ -7,30 +7,30 @@ import {
 /**
  * The hourly poll (spec §9).
  *
- * Two sources, two mechanisms, one schedule:
- *
  *   Substack        public archive APIs, no credentials
  *   BetterMornings  the subscribed mailbox over IMAP
  *
- * Without this the app only gained articles when somebody ran a command by
- * hand. Both paths run the same normalizers as the manual backfill and the
- * `POST /ingest/email` webhook, so a piece cannot parse differently depending
- * on how it arrived.
+ * Both run the same normalizers as the manual backfill and the
+ * `POST /ingest/email` webhook, so an article cannot parse differently
+ * depending on how it arrived.
  */
 
 const HOUR_MS = 60 * 60 * 1000;
-/** Wait before the first run so a deploy is not immediately doing network I/O. */
-const FIRST_RUN_DELAY_MS = 30_000;
+const FIRST_RUN_DELAY_MS = 15_000;
 /**
- * How far back each poll looks. Generous enough to cover a missed run, a long
- * outage or a weekend, while keeping the hourly cost to a handful of messages
- * rather than the whole mailbox. Re-reading is harmless — ingest is idempotent.
+ * How far back each poll looks. Generous enough to absorb a missed run or an
+ * outage; re-reading is harmless because ingest is idempotent.
  */
-const LOOKBACK_DAYS = 14;
+const LOOKBACK_DAYS = 30;
+/**
+ * Neither source may stall the schedule. A hung IMAP socket used to leave the
+ * run flag set forever, which silently stopped ALL polling — including
+ * Substack, which was working fine.
+ */
+const SOURCE_TIMEOUT_MS = 10 * 60 * 1000;
 
 export interface Scheduler {
   stop: () => void;
-  /** Runs a poll immediately. */
   runNow: () => Promise<void>;
 }
 
@@ -38,6 +38,15 @@ interface Logger {
   info: (obj: unknown, msg?: string) => void;
   warn: (obj: unknown, msg?: string) => void;
   error: (obj: unknown, msg?: string) => void;
+}
+
+function withTimeout<T>(work: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    work,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms),
+    ),
+  ]);
 }
 
 export function startIngestScheduler(log: Logger): Scheduler {
@@ -48,53 +57,66 @@ export function startIngestScheduler(log: Logger): Scheduler {
   if (!mailbox) {
     log.warn(
       {},
-      'BetterMornings polling disabled — set IMAP_HOST, IMAP_USER and IMAP_PASSWORD to enable it',
+      'BetterMornings polling disabled — set IMAP_HOST, IMAP_USER and IMAP_PASSWORD',
     );
   }
 
   const pollSubstack = async () => {
-    try {
-      const totals = await ingestAllSubstack({ incremental: true });
-      if (totals.created > 0 || totals.updated > 0) {
-        log.info(totals, 'substack poll found new work');
-      }
-    } catch (err) {
-      // A failed poll must never take the API down — reading still works.
-      log.error({ err }, 'substack poll failed');
-    }
+    const totals = await withTimeout(
+      ingestAllSubstack({ incremental: true }),
+      SOURCE_TIMEOUT_MS,
+      'substack poll',
+    );
+    // Always report, even a quiet run. A poll that finds nothing and a poll
+    // that never happened look identical in the logs otherwise, and that is
+    // exactly the confusion that hid a broken devotional poll.
+    log.info(totals, 'substack poll complete');
   };
 
   const pollDevotionals = async () => {
     if (!mailbox) return;
-    try {
-      const since = new Date(Date.now() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
-      const result = await ingestFromMailbox(mailbox, { since });
 
-      if (result.created > 0 || result.updated > 0) {
-        log.info(result, 'devotional poll found new work');
-      }
-      if (result.held.length > 0) {
-        // Held means the parser did not trust its own reading — worth saying
-        // out loud rather than leaving to be discovered.
-        log.warn({ held: result.held }, 'devotionals held for review');
-      }
-    } catch (err) {
-      // Most likely an expired app password. Say so plainly: the symptom
-      // otherwise looks like BetterMan having stopped publishing.
-      log.error({ err }, 'devotional poll failed — check IMAP credentials');
+    const since = new Date(Date.now() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
+    const result = await withTimeout(
+      ingestFromMailbox(mailbox, { since, includeTrash: true }),
+      SOURCE_TIMEOUT_MS,
+      'devotional poll',
+    );
+
+    log.info({ ...result, since: since.toISOString() }, 'devotional poll complete');
+
+    if (result.held.length > 0) {
+      log.warn({ held: result.held }, 'devotionals held for review');
+    }
+    if (result.seen === 0) {
+      // Nothing matched at all. Either the mailbox is empty or the connection
+      // is not seeing what we think it is — worth saying rather than assuming.
+      log.warn({ mailbox: mailbox.user }, 'devotional poll saw no messages');
     }
   };
 
   const tick = async () => {
-    // A slow run must not overlap the next tick; the archive walk is rate
-    // limited to ~1 req/sec and can take a while on a cold start.
     if (running || stopped) return;
     running = true;
-    try {
-      await pollSubstack();
-      await pollDevotionals();
-    } finally {
-      running = false;
+
+    // Independent, so one source failing or hanging cannot take the other with
+    // it — and `running` is released in `finally` regardless.
+    const results = await Promise.allSettled([
+      pollSubstack().catch((err) => {
+        log.error({ err: String(err) }, 'substack poll failed');
+        throw err;
+      }),
+      pollDevotionals().catch((err) => {
+        // Most likely an expired app password or a blocked login. Say so:
+        // otherwise the symptom looks like BetterMan having stopped publishing.
+        log.error({ err: String(err) }, 'devotional poll failed — check IMAP credentials');
+        throw err;
+      }),
+    ]);
+
+    running = false;
+    if (results.every((r) => r.status === 'rejected')) {
+      log.error({}, 'every ingest source failed this run');
     }
   };
 
@@ -102,7 +124,7 @@ export function startIngestScheduler(log: Logger): Scheduler {
   const timer = setInterval(() => void tick(), HOUR_MS);
 
   log.info(
-    { everyMinutes: HOUR_MS / 60000, devotionals: Boolean(mailbox) },
+    { everyMinutes: HOUR_MS / 60000, devotionals: Boolean(mailbox), lookbackDays: LOOKBACK_DAYS },
     'ingest poll scheduled',
   );
 
