@@ -20,8 +20,12 @@ const FIRST_RUN_DELAY_MS = 15_000;
 /**
  * How far back each poll looks. Generous enough to absorb a missed run or an
  * outage; re-reading is harmless because ingest is idempotent.
+ *
+ * Raise INGEST_LOOKBACK_DAYS to backfill a fresh deployment from the whole
+ * mailbox — the steady-state window would otherwise leave a new environment
+ * holding only the last month of devotionals.
  */
-const LOOKBACK_DAYS = 30;
+const LOOKBACK_DAYS = Number(process.env.INGEST_LOOKBACK_DAYS ?? '30');
 /**
  * Neither source may stall the schedule. A hung IMAP socket used to leave the
  * run flag set forever, which silently stopped ALL polling — including
