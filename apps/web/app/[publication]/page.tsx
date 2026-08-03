@@ -46,12 +46,12 @@ export default async function ArchivePage({
   const visible = entries.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   return (
-    <div className="mx-auto max-w-shell px-5 py-8 sm:py-14">
+    <div className="mx-auto max-w-shell px-5 pb-8 pt-8 sm:pt-14">
       {/* The way back. Without it the only route home was the logo, which is
           not obviously a link on a phone. */}
       <nav className="mb-8">
         <Link href="/" className="bm-eyebrow hover:text-ink">
-          ← All publications
+          ← Back
         </Link>
       </nav>
 
@@ -63,32 +63,39 @@ export default async function ArchivePage({
       </div>
 
       {totalPages > 1 ? (
+        // Three equal columns rather than space-between, so "Page 1 of 2" sits
+        // dead centre whether or not both arrows are present.
         <nav
           aria-label="Pagination"
-          className="mt-10 flex items-center justify-between gap-4 border-t border-hair pt-6"
+          className="mt-10 grid grid-cols-3 items-center gap-4"
         >
-          {page > 1 ? (
-            <Link
-              href={`/${pub.slug}${page - 1 === 1 ? '' : `?page=${page - 1}`}`}
-              className="bm-eyebrow hover:text-ink"
-            >
-              ← Newer
-            </Link>
-          ) : (
-            <span />
-          )}
+          <div className="justify-self-start">
+            {page > 1 ? (
+              <Link
+                href={`/${pub.slug}${page - 1 === 1 ? '' : `?page=${page - 1}`}`}
+                aria-label="Newer pieces"
+                className="flex h-11 w-11 items-center justify-center text-[20px] text-mute hover:text-ink"
+              >
+                &lsaquo;
+              </Link>
+            ) : null}
+          </div>
 
-          <span className="bm-eyebrow !text-mute">
+          <span className="bm-eyebrow justify-self-center !text-mute">
             Page {page} of {totalPages}
           </span>
 
-          {page < totalPages ? (
-            <Link href={`/${pub.slug}?page=${page + 1}`} className="bm-eyebrow hover:text-ink">
-              Older →
-            </Link>
-          ) : (
-            <span />
-          )}
+          <div className="justify-self-end">
+            {page < totalPages ? (
+              <Link
+                href={`/${pub.slug}?page=${page + 1}`}
+                aria-label="Older pieces"
+                className="flex h-11 w-11 items-center justify-center text-[20px] text-mute hover:text-ink"
+              >
+                &rsaquo;
+              </Link>
+            ) : null}
+          </div>
         </nav>
       ) : null}
     </div>

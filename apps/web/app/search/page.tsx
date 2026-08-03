@@ -22,7 +22,7 @@ export default async function SearchPage({
   const [hits, books] = await Promise.all([query ? search(query) : [], getBooks()]);
 
   return (
-    <div className="mx-auto max-w-shell px-5 py-10 sm:py-16">
+    <div className="mx-auto max-w-shell px-5 pb-8 pt-10 sm:pt-16">
       <h1 className="text-display-sm sm:text-display-md">Search</h1>
 
       {/* A GET form, so a search is a shareable, bookmarkable URL. */}
@@ -37,11 +37,11 @@ export default async function SearchPage({
             name="q"
             defaultValue={query}
             autoComplete="off"
-            className="w-full border border-hair bg-paper px-4 py-3 text-[17px] placeholder:text-mute focus:border-clay focus:outline-none"
+            className="h-12 w-full border border-hair bg-paper px-4 text-[17px] focus:border-clay focus:outline-none"
           />
           <button
             type="submit"
-            className="shrink-0 border border-ink bg-ink px-5 text-[12px] font-bold uppercase tracking-[2px] text-white transition-colors hover:border-clay-deep hover:bg-clay-deep"
+            className="h-12 shrink-0 border border-ink bg-ink px-5 text-[12px] font-bold uppercase tracking-[2px] text-white transition-colors hover:border-clay-deep hover:bg-clay-deep"
           >
             Go
           </button>
@@ -111,10 +111,9 @@ export default async function SearchPage({
               <li key={book.slug}>
                 <Link
                   href={`/scripture/${book.slug}`}
-                  className="inline-flex items-baseline gap-2 border border-hair bg-paper px-4 py-2.5 transition-colors hover:border-clay hover:text-clay-deep"
+                  className="inline-block border border-hair bg-paper px-4 py-2.5 text-[17px] transition-colors hover:border-clay hover:text-clay-deep"
                 >
-                  <span className="text-[17px]">{book.book}</span>
-                  <span className="text-[13px] text-mute">{book.passages}</span>
+                  {book.book}
                 </Link>
               </li>
             ))}

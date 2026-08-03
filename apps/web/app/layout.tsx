@@ -3,6 +3,7 @@ import { Spectral } from 'next/font/google';
 import { chrome, TYPEKIT_KIT_ID } from '@betterman/ui';
 import { SiteHeader } from './_components/site-header';
 import { ServiceWorkerRegistrar } from './_components/service-worker';
+import { SiteFooter } from './_components/site-footer';
 import '@betterman/ui/tokens.css';
 import '@betterman/ui/styles.css';
 import '@betterman/ui/skins.css';
@@ -70,9 +71,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://use.typekit.net" crossOrigin="" />
         <link rel="stylesheet" href={`https://use.typekit.net/${kitId}.css`} />
       </head>
-      <body className="bm-shell min-h-dvh">
+      {/* Column layout so the footer sits after the content, not floating up
+          the page when a route is short. */}
+      <body className="bm-shell flex min-h-dvh flex-col">
         <SiteHeader />
-        <main>{children}</main>
+        <main className="flex-1">{children}</main>
+        <SiteFooter />
         <ServiceWorkerRegistrar />
       </body>
     </html>

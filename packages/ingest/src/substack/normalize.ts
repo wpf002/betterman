@@ -30,8 +30,14 @@ export function hashContent(html: string): string {
  * when they are free: they carry real prose, and they are part of the
  * publication the reader chose.
  */
-export function isReadableArticle(entry: SubstackArchiveEntry): boolean {
-  return entry.audience === 'everyone';
+export function isReadableArticle(
+  entry: SubstackArchiveEntry,
+  withSubscription = false,
+): boolean {
+  if (entry.audience === 'everyone') return true;
+  // A subscriber's session unlocks the rest. Without one these return a stub,
+  // and MIN_BODY_CHARS catches any that slip through with an expired cookie.
+  return withSubscription;
 }
 
 /** Bodies shorter than this are teasers or stubs, not the piece itself. */

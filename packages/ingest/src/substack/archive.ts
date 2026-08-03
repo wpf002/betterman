@@ -13,6 +13,26 @@
 
 const USER_AGENT = 'BettermanReader/0.1 (+https://betterman.com)';
 
+/**
+ * An optional Substack session, for publications the reader subscribes to.
+ *
+ * Most of Good Trouble is paid-only, and the public endpoints return a ~200
+ * byte stub for those rather than the article. With a subscriber's session
+ * cookie in SUBSTACK_COOKIE the same endpoints return the full body, so the
+ * archive can be complete instead of 16 posts deep.
+ *
+ * The cookie is read from the environment and never logged. It is a bearer
+ * credential for a real account: treat it like a password.
+ */
+export function substackCookie(): string | null {
+  const raw = process.env.SUBSTACK_COOKIE?.trim();
+  return raw ? raw : null;
+}
+
+export function hasSubstackSession(): boolean {
+  return substackCookie() !== null;
+}
+
 /** Substack tolerates roughly 1 request/second (spec §9). */
 export const RATE_LIMIT_MS = 1100;
 
@@ -35,11 +55,17 @@ export interface SubstackPost extends SubstackArchiveEntry {
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function getText(url: string): Promise<string> {
+  const cookie = substackCookie();
   const res = await fetch(url, {
-    headers: { 'user-agent': USER_AGENT, accept: 'text/html,application/json' },
+    headers: {
+      'user-agent': USER_AGENT,
+      accept: 'text/html,application/json',
+      ...(cookie ? { cookie } : {}),
+    },
     redirect: 'follow',
   });
-  if (!res.ok) throw new Error(`GET ${url} → ${res.status}`);
+  // Never echo the URL's query or the cookie into an error.
+  if (!res.ok) throw new Error(`GET ${new URL(url).pathname} → ${res.status}`);
   return res.text();
 }
 

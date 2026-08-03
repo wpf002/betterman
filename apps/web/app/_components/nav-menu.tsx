@@ -84,7 +84,7 @@ export function NavMenu({ destinations }: { destinations: NavDestination[] }) {
             role="dialog"
             aria-modal="true"
             aria-label="Menu"
-            className="absolute inset-x-0 top-0 bg-bone pb-6 shadow-[0_1px_0_var(--hair)]"
+            className="absolute inset-x-0 top-0 bg-bone"
           >
             <div className="flex items-center justify-between px-5 py-5">
               <span className="bm-eyebrow">Menu</span>

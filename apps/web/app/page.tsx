@@ -39,7 +39,7 @@ export default async function HomePage() {
   const latest = await getLatestByPublication(PUBLICATIONS);
 
   return (
-    <div className="mx-auto max-w-shell px-5 py-12 sm:py-20">
+    <div className="mx-auto max-w-shell px-5 pb-0 pt-12 sm:pt-20">
       <section className="text-center">
         <h1 className="mx-auto max-w-[20ch] text-display-md sm:max-w-none sm:text-display-lg">
           We believe men deserve <em className="bm-emphasis">better</em>.
@@ -55,7 +55,12 @@ export default async function HomePage() {
           at 375px and eats the whole screen before a reader reaches anything
           to read. From `sm` up there is room for the site's own arrangement.
         */}
-        <ul className="mt-10 space-y-5 text-left sm:mt-12 sm:grid sm:grid-cols-3 sm:gap-8 sm:space-y-0 sm:text-center">
+        {/*
+          The rows read left-to-right, but the BLOCK is centred — left-aligned
+          text hard against the gutter under a centred headline is what made
+          the hero look off-centre.
+        */}
+        <ul className="mx-auto mt-10 grid max-w-[19.5rem] gap-5 text-left sm:mt-12 sm:max-w-none sm:grid-cols-3 sm:gap-8 sm:text-center">
           {CONVICTIONS.map(([name, line]) => (
             <li key={name} className="flex gap-3 sm:mx-auto sm:max-w-[34ch] sm:flex-col sm:gap-0">
               <span className="mt-0.5 shrink-0 sm:mx-auto sm:mb-4 sm:mt-0 sm:flex sm:justify-center">
@@ -79,7 +84,7 @@ export default async function HomePage() {
             : null;
 
           return (
-            <li key={pub.slug} className="border-b border-hair">
+            <li key={pub.slug} className="border-b border-hair last:border-b-0">
               {/* The negative margin lets the tap highlight reach the page
                   gutter rather than hugging the words. */}
               <Link

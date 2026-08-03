@@ -118,6 +118,41 @@ export async function getChapter(book: string, chapter: number): Promise<Passage
     });
 }
 
+/**
+ * Every passage in a book, with the piece that taught it. Flat: a chapter list
+ * in between was an extra tap for no information.
+ */
+export async function getPassagesForBook(book: string): Promise<PassageEntry[]> {
+  const rows = await prisma.scriptureRef.findMany({
+    where: { book, item: { status: ItemStatus.PUBLISHED } },
+    orderBy: [{ chapter: 'asc' }, { verseStart: 'asc' }],
+    select: {
+      itemId: true,
+      displayRef: true,
+      isPrimary: true,
+      item: {
+        select: { slug: true, title: true, publishedAt: true, source: { select: { key: true } } },
+      },
+    },
+  });
+
+  return rows.flatMap((row) => {
+    const pub = PUBLICATIONS.find((p) => p.key === row.item.source.key);
+    if (!pub) return [];
+    return [
+      {
+        itemId: row.itemId,
+        href: `/${pub.slug}/${row.item.slug}`,
+        publication: pub.name,
+        title: row.item.title,
+        publishedAt: row.item.publishedAt,
+        displayRef: row.displayRef,
+        isPrimary: row.isPrimary,
+      },
+    ];
+  });
+}
+
 export async function getChaptersFor(book: string): Promise<Array<{ chapter: number; count: number }>> {
   const rows = await prisma.scriptureRef.groupBy({
     by: ['chapter'],

@@ -4,7 +4,13 @@
  * silent.
  */
 import { IngestStatus, SourceKind, prisma, type Source } from '@betterman/db';
-import { fetchArchive, fetchPostBody, sleep, RATE_LIMIT_MS } from '../substack/archive.js';
+import {
+  fetchArchive,
+  fetchPostBody,
+  hasSubstackSession,
+  sleep,
+  RATE_LIMIT_MS,
+} from '../substack/archive.js';
 import { MIN_BODY_CHARS, isReadableArticle, normalizeSubstackPost } from '../substack/normalize.js';
 import { storeRawPayload, upsertItem } from './upsert.js';
 
@@ -82,7 +88,10 @@ export async function ingestSubstackSource(
       onPage: (count, total) => log(`  ${host}: +${count} (${total} listed)`),
     });
 
-    const readable = archive.filter(isReadableArticle);
+    const subscribed = hasSubstackSession();
+    if (subscribed) log('  using the configured Substack session for paid posts');
+
+    const readable = archive.filter((entry) => isReadableArticle(entry, subscribed));
     const targets = opts.limit ? readable.slice(0, opts.limit) : readable;
     counters.skipped += archive.length - readable.length;
 
@@ -107,7 +116,15 @@ export async function ingestSubstackSource(
       await sleep(RATE_LIMIT_MS);
 
       if (!bodyHtml || bodyHtml.length < MIN_BODY_CHARS) {
-        log(`  ! no usable body for ${entry.slug} — skipped`);
+        // A paid post this short means the session is missing or expired —
+        // storing it would put a paywall stub in the library.
+        const why =
+          entry.audience !== 'everyone' && !subscribed
+            ? 'paywalled, no session configured'
+            : entry.audience !== 'everyone'
+              ? 'paywalled, session did not unlock it'
+              : 'no usable body';
+        log(`  ! ${entry.slug} — skipped (${why})`);
         counters.skipped += 1;
         continue;
       }
