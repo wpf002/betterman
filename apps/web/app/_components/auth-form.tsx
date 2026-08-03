@@ -70,6 +70,14 @@ export function AuthForm({ mode, next }: { mode: 'sign-in' | 'sign-up'; next: st
 
       <SubmitButton label={mode === 'sign-in' ? 'Sign in' : 'Create account'} />
 
+      {mode === 'sign-in' ? (
+        <p className="mt-6 text-[15px]">
+          <Link href="/forgot-password" className="text-clay-deep underline">
+            Forgotten your password?
+          </Link>
+        </p>
+      ) : null}
+
       <p className="mt-8 text-[15px] text-mute">
         {mode === 'sign-in' ? (
           <>

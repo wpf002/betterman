@@ -72,7 +72,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="bm-shell min-h-dvh">
         <SiteHeader />
-        <main>{children}</main>
+        {/* Bottom padding on phones so the fixed nav never covers the end of a
+            piece; the bar itself is `sm:hidden`. */}
+        <main className="pb-24 sm:pb-0">{children}</main>
         <ServiceWorkerRegistrar />
       </body>
     </html>

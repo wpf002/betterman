@@ -260,6 +260,7 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   sessions      Session[]
+  resetTokens   PasswordResetToken[]
   prefs         NotificationPref[]
   subscriptions PushSubscription[]
   bookmarks     Bookmark[]
@@ -269,6 +270,27 @@ model User {
   pending       PendingNotification[]
 
   @@map("users")
+}
+
+/// A single-use password reset link.
+///
+/// Like sessions, only the SHA-256 of the token is stored — a leaked table
+/// cannot be turned into account takeovers. Rows are kept after use so a
+/// second click on the same link can be told apart from an invalid one.
+model PasswordResetToken {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  requestedIp String?
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
 }
 
 /// A signed-in device. Tokens are stored hashed, so a database leak cannot be

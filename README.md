@@ -238,8 +238,17 @@ against `betterman.com/_hcms/mem/login` (spec §12) can replace how a session is
 - Saved Right Next Steps snapshot the step text. A later upstream edit — or a
   parser improvement — must not rewrite a commitment someone already made.
 
-Not yet built: password reset and email verification, both of which need an
-outbound mail provider that is not configured.
+Password reset is built and works today. `MAIL_TRANSPORT=console` (the default)
+writes the message — link included — to the server log, which is enough to run
+and test the whole flow before a provider is chosen. Set `MAIL_TRANSPORT=resend`
+and `RESEND_API_KEY` and nothing else changes.
+
+The flow answers identically whether or not an address has an account, stores
+only the SHA-256 of each link, expires them after an hour, allows one use, and
+destroys every other session on success — if the reset happened because someone
+else had the password, leaving their session alive would defeat the point.
+
+Still not built: email verification on sign-up.
 
 ## Notifications
 
@@ -289,6 +298,17 @@ its headline reading — the Scripture section's passage is marked primary, and
 anything quoted in the teaching is kept as a secondary mention. Books are
 listed in canonical order, because a reader looking for Genesis expects it
 first, not after Ephesians.
+
+## Mobile
+
+Navigation splits at `sm`. On a phone the header is the lockup alone and the
+five destinations move to a thumb-reachable bottom bar — five links across a
+390px header ran off the right edge. The bar uses labels rather than icons,
+because BetterMan's identity is typographic and five invented glyphs would be
+five pieces of brand nobody sampled.
+
+Every page is checked for horizontal overflow at 360px, the narrowest width
+the spec requires.
 
 ## Phases
 
