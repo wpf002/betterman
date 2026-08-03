@@ -1,0 +1,82 @@
+/*
+ * BetterMan Reader — design tokens.
+ *
+ * Two disjoint namespaces (spec §13):
+ *   :root      → BetterMan app chrome. Sampled from betterman.com computed CSS.
+ *   .skin-*    → one source panel each. Sampled from the email / Substack themes.
+ *
+ * Skin variables are declared ONLY inside their panel class, so a skin can
+ * never leak into the chrome and the chrome can never leak into a panel.
+ */
+
+:root {
+  /* --- Chrome palette (betterman.com) --- */
+  --bone: #f1f0ec;
+  --ink: #1e1e1e;
+  --mute: #71706c;
+  --hair: #dcdad3;
+  --paper: #ffffff;
+  --clay: #c28154; /* THE accent — every CTA on betterman.com */
+  --clay-deep: #a66b42; /* hover */
+
+  /* --- Chrome type ---
+   * Adobe Fonts kit sbo2xxd (linked publicly from betterman.com) serves
+   * neue-haas-grotesk-display, neue-haas-grotesk-text and linotype-sabon.
+   * proxima-nova is NOT in the kit; -text is the secondary face.
+   * The fallback stack stands alone if the kit fails to load. */
+  --font-display: 'neue-haas-grotesk-display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-text: 'neue-haas-grotesk-text', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+
+  --measure: 36rem; /* chrome reading measure */
+  --panel-width: 600px; /* the source panel — every reading page */
+
+  --body-size: 17px;
+  --body-leading: 1.65;
+
+  /* Headings are LIGHT. Never 700+ on a headline. */
+  --heading-weight: 300;
+  --heading-tracking: normal;
+
+  --rule: 1px solid var(--hair);
+  --focus-ring: 2px solid var(--clay);
+  --focus-offset: 2px;
+}
+
+/* --- Skin A — BetterMornings (HubSpot email source) --------------------- */
+.skin-bettermornings {
+  --bm-bg: #1e2b33;
+  --bm-text: #ffffff;
+  --bm-give: #37761d; /* GIVE TO BETTERMAN */
+  --bm-connect: #8f5a36; /* GET CONNECTED */
+  --bm-sub: #f1c233; /* SUBSCRIBE TO BETTERMORNINGS */
+
+  --bm-font: Arial, Helvetica, sans-serif;
+  --bm-size: 16px;
+  --bm-gutter: 20px; /* the email's own padding: 0 20px */
+  --bm-cta-radius: 25px;
+}
+
+/* --- Skin B — Good Trouble (charper.substack.com theme) ----------------- */
+.skin-good-trouble {
+  --gt-bg: #ffffff;
+  --gt-text: #363737;
+  --gt-accent: #e85c57; /* customized coral */
+
+  --gt-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --gt-size: 19px;
+  --gt-leading: 1.7;
+}
+
+/* --- Skin C — Josiah Jones (josiahjones1.substack.com theme) ------------ */
+.skin-josiah-jones {
+  --jj-bg: #ffffff;
+  --jj-text: #363737;
+  --jj-accent: #ff6719; /* Substack default orange — uncustomized */
+
+  /* Body is Spectral, a serif. Headings stay sans. */
+  --jj-font: 'Spectral', Georgia, Cambria, 'Times New Roman', serif;
+  --jj-heading-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+    sans-serif;
+  --jj-size: 19px;
+  --jj-leading: 1.7;
+}

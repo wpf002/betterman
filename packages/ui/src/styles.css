@@ -1,0 +1,85 @@
+/*
+ * Chrome primitives. BetterMan styling only — no skin values below this line.
+ * Panels bring their own type and color; see tokens.css.
+ */
+
+.bm-shell {
+  background: var(--bone);
+  color: var(--ink);
+  font-family: var(--font-text);
+  font-size: var(--body-size);
+  line-height: var(--body-leading);
+}
+
+/* Headings are light (300–400) and sentence case. Never 700+. */
+.bm-heading {
+  font-family: var(--font-display);
+  font-weight: var(--heading-weight);
+  letter-spacing: var(--heading-tracking);
+  line-height: 1.08;
+}
+
+/* Italic is BetterMan's emphasis device — never bold. */
+.bm-emphasis {
+  font-style: italic;
+  font-weight: inherit;
+}
+
+/* Eyebrows, labels and buttons share one spec: 12 / 700 / 2px / uppercase. */
+.bm-eyebrow {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+
+.bm-button {
+  display: inline-block;
+  border-radius: 999px;
+  background: var(--clay);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 16px 32px;
+  text-decoration: none;
+  transition: background-color 150ms ease;
+}
+
+.bm-button:hover {
+  background: var(--clay-deep);
+}
+
+/* Separation is hairlines and whitespace — not shadowed card boxes. */
+.bm-rule {
+  border: 0;
+  border-top: var(--rule);
+}
+
+/* The 600px source panel floating on the bone gutter. */
+.bm-panel {
+  width: 100%;
+  max-width: var(--panel-width);
+  margin-inline: auto;
+}
+
+/* Accessibility floor: visible focus rings everywhere. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

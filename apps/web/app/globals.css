@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--bone);
+    color: var(--ink);
+    font-family: var(--font-text);
+    font-size: var(--body-size);
+    line-height: var(--body-leading);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Chrome headings are light (300–400), sentence case, normal tracking. */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: var(--heading-weight);
+    line-height: 1.08;
+  }
+}

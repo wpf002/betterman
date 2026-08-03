@@ -1,0 +1,345 @@
+// BetterMan Reader — data model.
+//
+// Three publications, never merged into one feed (spec §2). Ingest is
+// idempotent: dedupe on (sourceId, externalId), detect upstream edits with
+// contentHash, and keep the raw payload on every run so a parser fix can be
+// replayed without re-fetching (spec §9).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Publications
+// ---------------------------------------------------------------------------
+
+enum SourceKey {
+  BETTERMORNINGS
+  GOOD_TROUBLE
+  JOSIAH_JONES
+}
+
+enum SourceKind {
+  EMAIL
+  SUBSTACK
+}
+
+model Source {
+  id        String     @id @default(cuid())
+  key       SourceKey  @unique
+  kind      SourceKind
+  name      String // "BetterMornings"
+  slug      String     @unique // "bettermornings" — the route segment
+  homeUrl   String
+  feedUrl   String?
+  /// Substack host used for the archive JSON API, e.g. "charper.substack.com".
+  apiHost   String?
+  active    Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  items       Item[]
+  ingestRuns  IngestRun[]
+  rawPayloads RawPayload[]
+  prefs       NotificationPref[]
+  pushLogs    PushLog[]
+
+  @@map("sources")
+}
+
+// ---------------------------------------------------------------------------
+// Items — one per published piece, in any publication
+// ---------------------------------------------------------------------------
+
+enum ItemStatus {
+  /// Visible in the app.
+  PUBLISHED
+  /// Held back: parseQuality below threshold, or unpublished by an admin.
+  REVIEW
+  DRAFT
+}
+
+model Item {
+  id       String @id @default(cuid())
+  sourceId String
+  source   Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  /// Stable upstream identifier: Substack post id, or the email Message-ID.
+  externalId String
+  /// Route segment within the publication. For BetterMornings this is the
+  /// ISO date; for Substack it is the post slug.
+  slug       String
+
+  title       String
+  subtitle    String?
+  publishedAt DateTime
+  canonicalUrl String?
+  heroImageUrl String?
+
+  /// Sanitized HTML. Sanitizing happens on ingest, never on render (spec §13).
+  contentHtml String
+  /// Plaintext projection, for search (Phase 7) and push previews.
+  contentText String?
+
+  /// Hash of the upstream body; a change means the author edited the piece.
+  contentHash String
+  status      ItemStatus @default(PUBLISHED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  devotional Devotional?
+  bookmarks  Bookmark[]
+  progress   ReadingProgress[]
+  savedSteps SavedNextStep[]
+  scriptures ScriptureRef[]
+
+  @@unique([sourceId, externalId])
+  @@unique([sourceId, slug])
+  @@index([sourceId, publishedAt(sort: Desc)])
+  @@index([status, publishedAt(sort: Desc)])
+  @@map("items")
+}
+
+// ---------------------------------------------------------------------------
+// Devotional — the structured projection of a BetterMornings email
+// ---------------------------------------------------------------------------
+
+model Devotional {
+  id     String @id @default(cuid())
+  itemId String @unique
+  item   Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  /// Calendar date the devotional is for (America/Chicago), not the send time.
+  date DateTime @db.Date
+
+  scriptureText String?
+  scriptureRef  String?
+  thought       String?
+  /// "Reflection" (Nov 2025 template) or "Reflect" (Jul 2026) — aliased on parse.
+  reflect       String?
+  /// "Call to Action" (Nov 2025) or "Right Next Step" (Jul 2026).
+  rightNextStep String?
+  prayer        String?
+
+  /// 0–1. Below 0.9 the item is held in REVIEW instead of published (spec §9).
+  parseQuality Float
+  /// Which alias set matched, e.g. "2025-11" | "2026-07". Diagnostics only.
+  templateEra  String?
+  /// Section labels the parser could not place, for the review queue.
+  unmatched    Json?
+
+  @@unique([date])
+  @@index([date(sort: Desc)])
+  @@map("devotionals")
+}
+
+// ---------------------------------------------------------------------------
+// Scripture index (Phase 7)
+// ---------------------------------------------------------------------------
+
+model ScriptureRef {
+  id     String @id @default(cuid())
+  itemId String
+  item   Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  /// Normalized book name, e.g. "John".
+  book        String
+  chapter     Int
+  verseStart  Int?
+  verseEnd    Int?
+  /// The reference exactly as printed, e.g. "John 4:13-14".
+  displayRef  String
+
+  @@index([book, chapter])
+  @@index([itemId])
+  @@map("scripture_refs")
+}
+
+// ---------------------------------------------------------------------------
+// Ingest bookkeeping
+// ---------------------------------------------------------------------------
+
+enum IngestStatus {
+  RUNNING
+  SUCCESS
+  PARTIAL
+  FAILED
+}
+
+model IngestRun {
+  id       String  @id @default(cuid())
+  sourceId String?
+  source   Source? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+
+  /// "rss" | "archive-backfill" | "email-webhook"
+  trigger    String
+  status     IngestStatus @default(RUNNING)
+  startedAt  DateTime     @default(now())
+  finishedAt DateTime?
+
+  itemsSeen     Int @default(0)
+  itemsCreated  Int @default(0)
+  itemsUpdated  Int @default(0)
+  itemsSkipped  Int @default(0)
+  itemsInReview Int @default(0)
+
+  error String?
+
+  payloads RawPayload[]
+
+  @@index([sourceId, startedAt(sort: Desc)])
+  @@map("ingest_runs")
+}
+
+/// Every ingest run stores what it received, so a parser fix can be replayed
+/// without re-fetching upstream (spec §9).
+model RawPayload {
+  id       String  @id @default(cuid())
+  sourceId String?
+  source   Source? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  runId    String?
+  run      IngestRun? @relation(fields: [runId], references: [id], onDelete: SetNull)
+
+  /// "email-mime" | "substack-rss" | "substack-post-json"
+  kind       String
+  externalId String?
+  /// Raw body as received: full MIME for email, XML/JSON for Substack.
+  body       String
+  bodyHash   String
+  receivedAt DateTime @default(now())
+
+  @@index([kind, receivedAt(sort: Desc)])
+  @@index([externalId])
+  @@map("raw_payloads")
+}
+
+// ---------------------------------------------------------------------------
+// Accounts (Phase 5) and notifications (Phase 6)
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  emailVerified DateTime?
+  /// IANA zone, e.g. "America/Chicago". Drives push delivery time.
+  timezone      String    @default("America/Chicago")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  prefs         NotificationPref[]
+  subscriptions PushSubscription[]
+  bookmarks     Bookmark[]
+  progress      ReadingProgress[]
+  savedSteps    SavedNextStep[]
+  pushLogs      PushLog[]
+
+  @@map("users")
+}
+
+/// One row per (user, publication) — a reader can take all three or just one.
+model NotificationPref {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceId String
+  source   Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  enabled Boolean @default(false)
+  /// Local hour 0–23 to deliver at. BetterMornings defaults to the ~6am CT send.
+  deliverHour Int? @default(6)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, sourceId])
+  @@map("notification_prefs")
+}
+
+model PushSubscription {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  endpoint String @unique
+  p256dh   String
+  auth     String
+  /// Raw UA string — used to surface the iOS 16.4+ / installed-PWA constraint.
+  userAgent String?
+
+  createdAt DateTime  @default(now())
+  lastUsedAt DateTime?
+  failureCount Int     @default(0)
+
+  @@index([userId])
+  @@map("push_subscriptions")
+}
+
+/// Debounce ledger: never more than one push per publication per day (spec §10).
+model PushLog {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceId String
+  source   Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  /// Local calendar date of delivery, in the user's timezone.
+  localDate DateTime @db.Date
+  itemId    String?
+  sentAt    DateTime @default(now())
+
+  @@unique([userId, sourceId, localDate])
+  @@map("push_logs")
+}
+
+model Bookmark {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemId String
+  item   Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, itemId])
+  @@map("bookmarks")
+}
+
+model ReadingProgress {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemId String
+  item   Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  /// 0–1 scroll depth.
+  percent    Float    @default(0)
+  completedAt DateTime?
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, itemId])
+  @@map("reading_progress")
+}
+
+/// The reader checks off the Right Next Step they committed to (spec §12, Phase 5).
+model SavedNextStep {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemId String
+  item   Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  /// Snapshotted at save time so an upstream edit cannot rewrite a commitment.
+  stepText    String
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@unique([userId, itemId])
+  @@map("saved_next_steps")
+}

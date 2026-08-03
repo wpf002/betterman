@@ -1,0 +1,29 @@
+{
+  "name": "@betterman/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@betterman/db": "workspace:*",
+    "@betterman/ingest": "workspace:*",
+    "@fastify/cors": "10.0.1",
+    "@fastify/sensible": "6.0.1",
+    "fastify": "5.0.0",
+    "ioredis": "5.4.1"
+  },
+  "devDependencies": {
+    "@betterman/config": "workspace:*",
+    "@types/node": "22.7.5",
+    "pino-pretty": "11.2.2",
+    "tsx": "4.19.1",
+    "typescript": "5.6.3",
+    "vitest": "2.1.2"
+  }
+}
