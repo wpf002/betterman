@@ -26,7 +26,7 @@ export default async function SavedPage() {
 
       {bookmarks.length === 0 ? (
         <p className="mt-10 max-w-measure text-mute">
-          Nothing saved yet. Open a piece and tap <em className="bm-emphasis">Bookmark</em>.
+          Nothing saved yet. Open an article and tap <em className="bm-emphasis">Bookmark</em>.
         </p>
       ) : (
         <ul className="mt-10 border-t border-hair">

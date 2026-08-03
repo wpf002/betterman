@@ -44,7 +44,7 @@ export default async function ChapterPage({
         {book} {chapter}
       </h1>
       <p className="mt-4 max-w-measure text-mute">
-        {entries.length} {entries.length === 1 ? 'piece' : 'pieces'} from this chapter.
+        {entries.length} {entries.length === 1 ? 'article' : 'articles'} from this chapter.
       </p>
 
       {primary.length > 0 ? (

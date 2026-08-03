@@ -103,7 +103,7 @@ export default async function SearchPage({
 
         {books.length === 0 ? (
           <p className="mt-6 max-w-measure text-mute">
-            Passages appear here as pieces are ingested.
+            Passages appear here as articles are ingested.
           </p>
         ) : (
           <ul className="mt-6 flex flex-wrap gap-x-3 gap-y-3">

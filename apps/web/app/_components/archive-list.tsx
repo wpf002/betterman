@@ -18,7 +18,7 @@ export function ArchiveList({
   if (entries.length === 0) {
     return (
       <p className="max-w-measure py-10 text-mute">
-        Nothing here yet. New pieces appear as soon as they are published.
+        Nothing here yet. New articles appear as soon as they are published.
       </p>
     );
   }

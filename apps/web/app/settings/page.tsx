@@ -30,7 +30,7 @@ export default async function SettingsPage() {
       <p className="bm-eyebrow">Settings</p>
       <h1 className="mt-4 text-display-sm sm:text-display-md">Notifications</h1>
       <p className="mt-4 max-w-measure text-mute">
-        Get a notification when a new piece lands. Take all three, or just the one you read.
+        Get a notification when a new article lands. Take all three, or just the one you read.
       </p>
 
       <IosInstallNotice />
