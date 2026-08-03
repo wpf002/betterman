@@ -238,6 +238,25 @@ debounce claims a `push_logs` row before sending, so two workers cannot both
 deliver. Subscriptions answering 404 or 410 are pruned; other failures are not,
 since a transient 5xx is not a dead device.
 
+## Search and the Scripture index
+
+Search is Postgres full-text over a **generated** `tsvector` column, not a
+trigger and not an application-maintained one — Postgres recomputes it on every
+write, so it cannot fall out of step with the text, including after a bulk
+`pnpm reparse`. It is weighted title / subtitle / body, which is what makes a
+headline match beat the same words buried in a body.
+
+`websearch_to_tsquery` means a reader can quote a phrase the way they would in
+any search box. Snippets come from `ts_headline` with private-use delimiters
+rather than `<b>`: `contentText` is plaintext that may contain angle brackets,
+and returning HTML from the database would mean trusting it at render time.
+
+The Scripture index records **every passage a devotional touches**, not just
+its headline reading — the Scripture section's passage is marked primary, and
+anything quoted in the teaching is kept as a secondary mention. Books are
+listed in canonical order, because a reader looking for Genesis expects it
+first, not after Ephesians.
+
 ## Phases
 
 Phase 0 (foundation) is complete. Subsequent phases are gated on the previous
@@ -252,6 +271,6 @@ one's acceptance criteria; see the build spec.
 | 4 | PWA + offline | ✅ |
 | 5 | Accounts, bookmarks, saved Right Next Steps | ✅ |
 | 6 | Notifications | ✅ |
-| 7 | Search + Scripture index | |
+| 7 | Search + Scripture index | ✅ |
 | 8 | Admin — ingest health, parse review queue | |
 | 9 | Launch | |

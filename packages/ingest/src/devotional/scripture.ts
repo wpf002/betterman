@@ -95,6 +95,12 @@ export interface ParsedScriptureRef {
   verseEnd: number | null;
   /** The reference exactly as printed. */
   displayRef: string;
+  /**
+   * True for the passage the devotional is built on — its Scripture section —
+   * false for one quoted along the way. Both belong in the index; only the
+   * first should lead it.
+   */
+  isPrimary: boolean;
 }
 
 /**
@@ -104,6 +110,27 @@ export interface ParsedScriptureRef {
  */
 const REF_PATTERN =
   /\b((?:[1-3]\s*)?[A-Z][a-zA-Z]*(?:\s+of\s+[A-Z][a-zA-Z]+)?(?:\s+[A-Z][a-zA-Z]+)?)\.?\s+(\d{1,3})(?::(\d{1,3})(?:\s*[-–—]\s*(\d{1,3}))?)?/g;
+
+/**
+ * Merges reference lists, keeping one row per passage and preferring the
+ * primary reading when the same passage appears in both.
+ */
+export function mergeScriptureRefs(
+  ...lists: ParsedScriptureRef[][]
+): ParsedScriptureRef[] {
+  const byKey = new Map<string, ParsedScriptureRef>();
+
+  for (const list of lists) {
+    for (const ref of list) {
+      const key = `${ref.book}|${ref.chapter}|${ref.verseStart ?? ''}|${ref.verseEnd ?? ''}`;
+      const existing = byKey.get(key);
+      if (!existing) byKey.set(key, ref);
+      else if (ref.isPrimary && !existing.isPrimary) byKey.set(key, ref);
+    }
+  }
+
+  return [...byKey.values()];
+}
 
 /** Extracts every resolvable reference from a line of text, deduped. */
 export function parseScriptureRefs(text: string): ParsedScriptureRef[] {
@@ -135,7 +162,7 @@ export function parseScriptureRefs(text: string): ParsedScriptureRef[] {
     if (seen.has(key)) continue;
     seen.add(key);
 
-    out.push({ book, chapter, verseStart, verseEnd, displayRef: full.trim() });
+    out.push({ book, chapter, verseStart, verseEnd, displayRef: full.trim(), isPrimary: false });
   }
 
   return out;

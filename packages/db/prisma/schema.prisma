@@ -91,6 +91,11 @@ model Item {
   contentHash String
   status      ItemStatus @default(PUBLISHED)
 
+  /// Weighted full-text index (Phase 7). A generated column, maintained by
+  /// Postgres itself, so it can never drift from the text it indexes. The
+  /// migration defines the expression; Prisma only needs to know it exists.
+  searchVector Unsupported("tsvector")?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -105,6 +110,7 @@ model Item {
   @@unique([sourceId, slug])
   @@index([sourceId, publishedAt(sort: Desc)])
   @@index([status, publishedAt(sort: Desc)])
+  @@index([searchVector], type: Gin)
   @@map("items")
 }
 
@@ -159,6 +165,9 @@ model ScriptureRef {
   verseEnd    Int?
   /// The reference exactly as printed, e.g. "John 4:13-14".
   displayRef  String
+  /// True for the passage the piece is actually built on — its Scripture
+  /// section — false for one merely quoted along the way.
+  isPrimary   Boolean @default(false)
 
   @@index([book, chapter])
   @@index([itemId])

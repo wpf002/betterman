@@ -17,6 +17,12 @@ export async function SiteHeader() {
         </Link>
 
         <nav className="flex items-center gap-5">
+          <Link href="/search" className="bm-eyebrow hover:text-ink">
+            Search
+          </Link>
+          <Link href="/scripture" className="bm-eyebrow hidden hover:text-ink sm:block">
+            Scripture
+          </Link>
           {user ? (
             <Link href="/saved" className="bm-eyebrow hover:text-ink">
               Saved

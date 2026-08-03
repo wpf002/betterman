@@ -21,7 +21,12 @@ import {
   resolveSection,
   type DevotionalSection,
 } from './sections.js';
-import { parseScriptureRefs, splitScriptureLine, type ParsedScriptureRef } from './scripture.js';
+import {
+  mergeScriptureRefs,
+  parseScriptureRefs,
+  splitScriptureLine,
+  type ParsedScriptureRef,
+} from './scripture.js';
 
 export interface ParsedDevotional {
   /** Calendar date the devotional is for, as printed in the email. */
@@ -45,7 +50,12 @@ export interface ParsedDevotional {
   templateEra: string | null;
   /** Labels seen that resolved to no known section — surfaced in review. */
   unmatched: string[];
-  /** Every scripture reference found anywhere in the devotional. */
+  /**
+   * Every passage the devotional touches — the Scripture section's reading
+   * marked primary, anything quoted in the body marked secondary. Spec §12
+   * wants "every passage ever taught" browsable, which is more than the
+   * headline reading.
+   */
   scriptureRefs: ParsedScriptureRef[];
 }
 
@@ -236,7 +246,23 @@ export function parseDevotional(html: string): ParsedDevotional {
     prayer: join('prayer'),
     templateEra,
     unmatched,
-    scriptureRefs: parseScriptureRefs(scriptureRef ?? scriptureRaw ?? ''),
+    scriptureRefs: mergeScriptureRefs(
+      parseScriptureRefs(scriptureRef ?? scriptureRaw ?? '').map((ref) => ({
+        ...ref,
+        isPrimary: true,
+      })),
+      // Passages cited in the teaching itself still count as taught.
+      parseScriptureRefs(
+        [
+          title ?? '',
+          join('thought') ?? '',
+          join('reflect') ?? '',
+          join('rightNextStep') ?? '',
+          join('fightPlan') ?? '',
+          join('prayer') ?? '',
+        ].join('\n'),
+      ),
+    ),
   };
 
   return { ...parsed, parseQuality: scoreParseQuality(parsed) };
