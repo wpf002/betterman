@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import sensible from '@fastify/sensible';
 import { env, isProduction } from './env.js';
 import { healthRoutes } from './routes/health.js';
+import { ingestRoutes } from './routes/ingest.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -19,6 +20,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   await app.register(healthRoutes);
+  await app.register(ingestRoutes);
 
   return app;
 }
