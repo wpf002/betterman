@@ -10,7 +10,7 @@
  * password has been revoked, or a Substack post has been edited upstream.
  */
 import { ItemStatus, SourceKey, prisma } from '@betterman/db';
-import { parseMime } from '../src/email/mime.js';
+import { recoverHtml } from '../src/email/payload.js';
 import { ingestDevotionalEmail, upsertItem } from '../src/pipeline/upsert.js';
 import { normalizeSubstackPost } from '../src/substack/normalize.js';
 
@@ -39,12 +39,15 @@ async function reparseDevotionals() {
     if (seen.has(key)) continue;
     seen.add(key);
 
-    const mail = await parseMime(payload.body);
-    if (!mail.html) continue;
+    const recovered = await recoverHtml(payload.body);
+    if (!recovered.html) {
+      console.log(`  ! ${key.slice(0, 48)}: no HTML recoverable — skipped`);
+      continue;
+    }
 
-    const result = await ingestDevotionalEmail(source, mail.html, {
-      messageId: mail.messageId ?? undefined,
-      receivedAt: mail.date ?? undefined,
+    const result = await ingestDevotionalEmail(source, recovered.html, {
+      messageId: recovered.messageId,
+      receivedAt: recovered.receivedAt,
       force: true,
     });
 

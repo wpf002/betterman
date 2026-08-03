@@ -154,6 +154,39 @@ appears after a section has opened** — otherwise ordinary prose ("Richard
 Sibbes observed: …") and colon-bearing titles read as false alarms. Across the
 34 devotionals the minimum score is now **0.93** and none are held.
 
+## Backups
+
+```bash
+pnpm db:backup
+```
+
+Dumps to `~/Documents/betterman-backups` — deliberately **outside** the
+repository, since a dump contains raw devotional emails and reader accounts.
+Every backup is verified by restoring it into a scratch database and comparing
+row counts, because a dump nobody has restored is a hope rather than a backup.
+
+This matters more than usual here: the BetterMornings archive was backfilled
+from a mailbox whose app password has since been revoked, so `raw_payloads` is
+currently the only copy of those emails.
+
+## Admin
+
+```bash
+pnpm db:make-admin <email>            # grant
+pnpm db:make-admin <email> --revoke   # take it back
+```
+
+Admin is granted from the command line only — there is no path to it through
+the app, so a reader cannot promote themselves. Non-admins get a 404 rather
+than a 403 on `/admin`: "forbidden" would confirm the surfaces exist.
+
+`/admin` shows ingest health per publication and the recent run log.
+`/admin/review` is the parse review queue, showing each held piece's quality
+score, the labels the parser did not recognise, and which fields came back
+empty — with **re-run**, **publish** and preview. Re-run replays the stored
+payload through the current parser, so fixing the parser and re-running is the
+normal repair path and never re-fetches anything.
+
 ## Replaying the archive
 
 ```bash
@@ -272,5 +305,5 @@ one's acceptance criteria; see the build spec.
 | 5 | Accounts, bookmarks, saved Right Next Steps | ✅ |
 | 6 | Notifications | ✅ |
 | 7 | Search + Scripture index | ✅ |
-| 8 | Admin — ingest health, parse review queue | |
+| 8 | Admin — ingest health, parse review queue | ✅ |
 | 9 | Launch | |

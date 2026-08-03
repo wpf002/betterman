@@ -9,6 +9,7 @@ import { ProgressTracker } from '../../_components/progress-tracker';
 import { getPublication } from '@/lib/publications';
 import { getItem, getNeighbours } from '@/lib/queries';
 import { getSessionUser } from '@/lib/auth/session';
+import { isAdmin } from '@/lib/admin/guard';
 import { getReaderState } from '@/lib/reading/queries';
 import { formatDevotionalDate, formatLongDate } from '@/lib/dates';
 
@@ -49,7 +50,9 @@ export default async function ReadingPage({
   const pub = getPublication(publication);
   if (!pub) notFound();
 
-  const item = await getItem(pub, slug);
+  // Admins can open a held piece to review it; readers cannot.
+  const admin = await isAdmin();
+  const item = await getItem(pub, slug, admin);
   if (!item) notFound();
 
   const [{ older, newer }, user] = await Promise.all([
@@ -72,6 +75,19 @@ export default async function ReadingPage({
           ← {pub.name}
         </Link>
       </nav>
+
+      {item.status === 'REVIEW' ? (
+        <div className="mx-auto mb-8 max-w-panel border-l-2 border-clay bg-paper/70 px-5 py-4">
+          <p className="bm-eyebrow">Held for review</p>
+          <p className="mt-2 text-[15px]">
+            No reader can see this. You are viewing it as an admin.{' '}
+            <Link href="/admin/review" className="text-clay-deep underline">
+              Back to the queue
+            </Link>
+            .
+          </p>
+        </div>
+      ) : null}
 
       {isDevotional ? (
         <BettermorningsPanel item={item} />

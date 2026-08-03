@@ -20,7 +20,9 @@
     "ingest:substack": "pnpm --filter @betterman/ingest ingest:substack",
     "ingest:email-dir": "pnpm --filter @betterman/ingest ingest:email-dir",
     "ingest:email-imap": "pnpm --filter @betterman/ingest ingest:email-imap",
-    "reparse": "pnpm --filter @betterman/ingest reparse"
+    "reparse": "pnpm --filter @betterman/ingest reparse",
+    "db:backup": "pnpm --filter @betterman/db backup",
+    "db:make-admin": "pnpm --filter @betterman/db make-admin"
   },
   "devDependencies": {
     "@betterman/config": "workspace:*",

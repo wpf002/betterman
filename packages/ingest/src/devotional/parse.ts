@@ -184,7 +184,7 @@ export function parseDevotional(html: string): ParsedDevotional {
   const matchedLabels: string[] = [];
   let current: DevotionalSection | null = null;
 
-  for (const p of paragraphs) {
+  for (const [index, p] of paragraphs.entries()) {
     const split = splitLabel(p.text);
     if (split) {
       const section = resolveSection(split.label);
@@ -197,13 +197,19 @@ export function parseDevotional(html: string): ParsedDevotional {
         sections[section] = split.rest ? [...existing, split.rest] : existing;
         continue;
       }
-      // A label-shaped opener we do not know. Two things disqualify it:
-      // it is not emphasized (ordinary prose — "Richard Sibbes observed: …"),
-      // or no section has opened yet, which means we are still on the title
-      // line, and titles carry colons of their own ("Rahab: Grace for
-      // Outsiders").
+      // A label-shaped opener we do not know. Two things disqualify it: it is
+      // not emphasized (ordinary prose — "Richard Sibbes observed: …"), or it
+      // is the title line, since titles carry colons of their own ("Rahab:
+      // Grace for Outsiders").
+      //
+      // Everything else is recorded, INCLUDING labels seen before any known
+      // section opened. When a template moves far enough that nothing matches
+      // at all, those labels are the only evidence of what it moved to — and
+      // that is precisely the case a reviewer most needs explained.
+      const isTitleLine = index === 0 && title === p.text;
+
       if (
-        current !== null &&
+        !isTitleLine &&
         p.labelIsBold &&
         split.label.length <= 24 &&
         !unmatched.includes(split.label.trim())

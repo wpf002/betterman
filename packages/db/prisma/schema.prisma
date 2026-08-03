@@ -170,6 +170,7 @@ model ScriptureRef {
   isPrimary   Boolean @default(false)
 
   @@index([book, chapter])
+  @@index([book, chapter, isPrimary])
   @@index([itemId])
   @@map("scripture_refs")
 }
@@ -236,6 +237,14 @@ model RawPayload {
 // Accounts (Phase 5) and notifications (Phase 6)
 // ---------------------------------------------------------------------------
 
+/// Readers by default. Admin is granted deliberately, from the command line
+/// (`pnpm db:make-admin <email>`) — there is no way to self-promote through
+/// the app.
+enum UserRole {
+  READER
+  ADMIN
+}
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
@@ -244,6 +253,7 @@ model User {
   /// scrypt hash. Null for an account that only ever signs in via SSO, so the
   /// HubSpot swap (spec §12) does not need a schema change.
   passwordHash  String?
+  role          UserRole  @default(READER)
   /// IANA zone, e.g. "America/Chicago". Drives push delivery time.
   timezone      String    @default("America/Chicago")
   createdAt     DateTime  @default(now())

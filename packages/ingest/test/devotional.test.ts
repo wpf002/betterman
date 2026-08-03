@@ -356,3 +356,22 @@ describe('devotional sanitizing', () => {
     expect(text).not.toContain('<p');
   });
 });
+
+describe('review information for a wholly changed template', () => {
+  it('records the labels it saw even when no known section matched', () => {
+    // The case that matters most in the review queue: nothing parsed, so the
+    // only clue about what the template became is the labels themselves.
+    const parsed = parseDevotional(
+      `<body><div data-hs-cos-type="rich_text"><h2>March 3, 2026</h2>
+       <p><strong>A Devotional With A Moved Template</strong></p>
+       <p><strong>Sponsored By:</strong> Someone new.</p>
+       <p><strong>Ponder This:</strong> A label never seen before.</p>
+       <p><strong>Your Move:</strong> Another one.</p></div></body>`,
+    );
+
+    expect(parsed.unmatched).toEqual(['Sponsored By', 'Ponder This', 'Your Move']);
+    expect(shouldPublish(parsed.parseQuality)).toBe(false);
+    // The title is not mistaken for a label.
+    expect(parsed.title).toBe('A Devotional With A Moved Template');
+  });
+});

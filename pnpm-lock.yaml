@@ -87,6 +87,9 @@ importers:
       '@betterman/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@betterman/ingest':
+        specifier: workspace:*
+        version: link:../../packages/ingest
       '@betterman/ui':
         specifier: workspace:*
         version: link:../../packages/ui

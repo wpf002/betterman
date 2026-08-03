@@ -18,7 +18,9 @@
     "deploy": "prisma migrate deploy",
     "seed": "tsx prisma/seed.ts",
     "studio": "prisma studio",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "backup": "bash scripts/backup.sh",
+    "make-admin": "tsx --env-file-if-exists=../../.env scripts/make-admin.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

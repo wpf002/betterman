@@ -89,6 +89,7 @@ export interface ReadingItem {
   canonicalUrl: string | null;
   /** Sanitized at ingest. Rendered as-is — never sanitized on render (§13). */
   contentHtml: string;
+  status: ItemStatus;
   devotional: {
     date: Date;
     scriptureRef: string | null;
@@ -96,9 +97,24 @@ export interface ReadingItem {
   } | null;
 }
 
-export async function getItem(pub: Publication, slug: string): Promise<ReadingItem | null> {
+/**
+ * One piece. `includeHeld` is for admins previewing the review queue — a piece
+ * ingest does not trust must never reach a reader, but a reviewer has to be
+ * able to read it before deciding.
+ */
+export async function getItem(
+  pub: Publication,
+  slug: string,
+  includeHeld = false,
+): Promise<ReadingItem | null> {
   const item = await prisma.item.findFirst({
-    where: { source: { key: pub.key }, slug, status: ItemStatus.PUBLISHED },
+    where: {
+      source: { key: pub.key },
+      slug,
+      status: includeHeld
+        ? { in: [ItemStatus.PUBLISHED, ItemStatus.REVIEW] }
+        : ItemStatus.PUBLISHED,
+    },
     select: {
       id: true,
       slug: true,
@@ -107,6 +123,7 @@ export async function getItem(pub: Publication, slug: string): Promise<ReadingIt
       publishedAt: true,
       canonicalUrl: true,
       contentHtml: true,
+      status: true,
       devotional: { select: { date: true, scriptureRef: true, rightNextStep: true } },
     },
   });

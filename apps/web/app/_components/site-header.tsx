@@ -1,13 +1,14 @@
 import Link from 'next/link';
 import { BettermanLockup } from '@betterman/ui';
 import { getSessionUser } from '@/lib/auth/session';
+import { isAdmin } from '@/lib/admin/guard';
 
 /**
  * App chrome. BetterMan styling only — a source skin never appears up here
  * (spec §13). The lockup rides on every page.
  */
 export async function SiteHeader() {
-  const user = await getSessionUser();
+  const [user, admin] = await Promise.all([getSessionUser(), isAdmin()]);
 
   return (
     <header className="border-b border-hair">
@@ -26,6 +27,11 @@ export async function SiteHeader() {
           {user ? (
             <Link href="/saved" className="bm-eyebrow hover:text-ink">
               Saved
+            </Link>
+          ) : null}
+          {admin ? (
+            <Link href="/admin" className="bm-eyebrow hover:text-ink">
+              Admin
             </Link>
           ) : null}
           <Link href="/settings" className="bm-eyebrow hover:text-ink">
