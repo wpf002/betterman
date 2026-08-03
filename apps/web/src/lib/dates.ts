@@ -22,7 +22,14 @@ export function formatDevotionalDate(dateKey: string): string {
   }).format(date);
 }
 
-/** "AUG 2" — the short, letterspaced date the Substack skins use. */
+/**
+ * "AUG 2" — the short, letterspaced date Substack itself prints.
+ *
+ * Used ONLY inside the Substack reading panel, where the job is to mirror the
+ * source (spec §6). Everywhere in BetterMan's own chrome — home, archives,
+ * search, saved — every publication shares one long date, because a list that
+ * mixes "AUG 2" and "August 3, 2026" reads as two different lists.
+ */
 export function formatShortDate(date: Date): string {
   return new Intl.DateTimeFormat('en-US', {
     timeZone: CENTRAL,

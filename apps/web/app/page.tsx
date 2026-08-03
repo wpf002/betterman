@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { PUBLICATIONS } from '@/lib/publications';
 import { getLatestByPublication } from '@/lib/queries';
-import { formatDevotionalDate, formatShortDate } from '@/lib/dates';
+import { formatDevotionalDate, formatLongDate } from '@/lib/dates';
 
 /**
  * Home is a CHOOSER, not a feed — three publications, each showing its latest
@@ -80,7 +80,7 @@ export default async function HomePage() {
           const dateLabel = entry
             ? pub.slug === 'bettermornings'
               ? formatDevotionalDate(entry.slug)
-              : formatShortDate(entry.publishedAt)
+              : formatLongDate(entry.publishedAt)
             : null;
 
           return (

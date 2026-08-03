@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { ArchiveEntry } from '@/lib/queries';
 import type { Publication } from '@/lib/publications';
-import { formatDevotionalDate, formatShortDate, toISODate } from '@/lib/dates';
+import { formatDevotionalDate, formatLongDate, toISODate } from '@/lib/dates';
 
 /**
  * An archive list, in BetterMan chrome — hairline rules and whitespace, never
@@ -30,7 +30,7 @@ export function ArchiveList({
       {entries.map((entry) => {
         const dateLabel = isDevotional
           ? formatDevotionalDate(entry.slug)
-          : formatShortDate(entry.publishedAt);
+          : formatLongDate(entry.publishedAt);
         // A devotional's secondary line is its passage; an article's is its subtitle.
         const secondary = isDevotional ? entry.scriptureRef : entry.subtitle;
 
