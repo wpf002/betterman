@@ -96,7 +96,7 @@ export default async function ReadingPage({
         <div className="mt-10 flex flex-col gap-6 border-t border-hair pt-6 sm:flex-row sm:justify-between">
           {newer ? (
             <Link href={`/${pub.slug}/${newer.slug}`} className="group max-w-[45ch]">
-              <span className="bm-eyebrow">Newer</span>
+              <span className="bm-eyebrow">Next</span>
               <span className="mt-1 block text-[17px] group-hover:text-clay-deep">
                 {newer.title}
               </span>
@@ -107,7 +107,7 @@ export default async function ReadingPage({
 
           {older ? (
             <Link href={`/${pub.slug}/${older.slug}`} className="group max-w-[45ch] sm:text-right">
-              <span className="bm-eyebrow">Older</span>
+              <span className="bm-eyebrow">Previous</span>
               <span className="mt-1 block text-[17px] group-hover:text-clay-deep">
                 {older.title}
               </span>

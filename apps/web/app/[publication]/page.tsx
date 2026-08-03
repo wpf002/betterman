@@ -73,7 +73,7 @@ export default async function ArchivePage({
             {page > 1 ? (
               <Link
                 href={`/${pub.slug}${page - 1 === 1 ? '' : `?page=${page - 1}`}`}
-                aria-label="Newer pieces"
+                aria-label="Next page"
                 className="flex h-11 w-11 items-center justify-center text-[20px] text-mute hover:text-ink"
               >
                 &lsaquo;
@@ -89,7 +89,7 @@ export default async function ArchivePage({
             {page < totalPages ? (
               <Link
                 href={`/${pub.slug}?page=${page + 1}`}
-                aria-label="Older pieces"
+                aria-label="Previous page"
                 className="flex h-11 w-11 items-center justify-center text-[20px] text-mute hover:text-ink"
               >
                 &rsaquo;

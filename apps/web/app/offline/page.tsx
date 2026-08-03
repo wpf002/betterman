@@ -14,7 +14,7 @@ export default function OfflinePage() {
         You&rsquo;re offline, but your <em className="bm-emphasis">recent reading</em> is here.
       </h1>
       <p className="mt-4 max-w-measure text-mute">
-        Anything from the last 30 days was saved to this device. Newer pieces will appear when
+        Anything from the last 30 days was saved to this device. Anything newer will appear when
         you&rsquo;re back online.
       </p>
 
