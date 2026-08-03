@@ -230,11 +230,15 @@ model User {
   email         String    @unique
   name          String?
   emailVerified DateTime?
+  /// scrypt hash. Null for an account that only ever signs in via SSO, so the
+  /// HubSpot swap (spec §12) does not need a schema change.
+  passwordHash  String?
   /// IANA zone, e.g. "America/Chicago". Drives push delivery time.
   timezone      String    @default("America/Chicago")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  sessions      Session[]
   prefs         NotificationPref[]
   subscriptions PushSubscription[]
   bookmarks     Bookmark[]
@@ -243,6 +247,25 @@ model User {
   pushLogs      PushLog[]
 
   @@map("users")
+}
+
+/// A signed-in device. Tokens are stored hashed, so a database leak cannot be
+/// replayed as a login.
+model Session {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// SHA-256 of the cookie value. The raw token is never stored.
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  userAgent String?
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
 }
 
 /// One row per (user, publication) — a reader can take all three or just one.

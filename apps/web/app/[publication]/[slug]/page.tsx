@@ -4,8 +4,12 @@ import { notFound } from 'next/navigation';
 import { SKIN_CLASS } from '@betterman/ui';
 import { BettermorningsPanel } from '../../_components/skins/bettermornings-panel';
 import { SubstackPanel } from '../../_components/skins/substack-panel';
+import { ReaderControls } from '../../_components/reader-controls';
+import { ProgressTracker } from '../../_components/progress-tracker';
 import { getPublication } from '@/lib/publications';
 import { getItem, getNeighbours } from '@/lib/queries';
+import { getSessionUser } from '@/lib/auth/session';
+import { getReaderState } from '@/lib/reading/queries';
 import { formatDevotionalDate, formatLongDate } from '@/lib/dates';
 
 /**
@@ -13,7 +17,11 @@ import { formatDevotionalDate, formatLongDate } from '@/lib/dates';
  * (spec §3). The chrome is identical for all three publications; only the
  * panel changes.
  */
-export const revalidate = 60;
+/**
+ * Rendered per request rather than cached: the panel is the same for everyone,
+ * but the bookmark state below it is not.
+ */
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({
   params,
@@ -44,7 +52,12 @@ export default async function ReadingPage({
   const item = await getItem(pub, slug);
   if (!item) notFound();
 
-  const { older, newer } = await getNeighbours(pub, item.publishedAt);
+  const [{ older, newer }, user] = await Promise.all([
+    getNeighbours(pub, item.publishedAt),
+    getSessionUser(),
+  ]);
+  const readerState = await getReaderState(user?.id ?? null, item.id);
+  const path = `/${pub.slug}/${item.slug}`;
 
   const isDevotional = pub.slug === 'bettermornings';
   const dateLabel = isDevotional
@@ -70,7 +83,17 @@ export default async function ReadingPage({
       <footer className="mx-auto mt-10 max-w-panel border-t border-hair pt-6">
         <p className="bm-eyebrow">{dateLabel}</p>
 
-        <div className="mt-6 flex flex-col gap-6 sm:flex-row sm:justify-between">
+        <div className="mt-6">
+          <ReaderControls
+            itemId={item.id}
+            path={path}
+            state={readerState}
+            signedIn={Boolean(user)}
+            hasNextStep={Boolean(item.devotional?.rightNextStep)}
+          />
+        </div>
+
+        <div className="mt-10 flex flex-col gap-6 border-t border-hair pt-6 sm:flex-row sm:justify-between">
           {newer ? (
             <Link href={`/${pub.slug}/${newer.slug}`} className="group max-w-[45ch]">
               <span className="bm-eyebrow">Newer</span>
@@ -94,6 +117,8 @@ export default async function ReadingPage({
           )}
         </div>
       </footer>
+
+      {user ? <ProgressTracker itemId={item.id} initialPercent={readerState.percent} /> : null}
     </div>
   );
 }

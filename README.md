@@ -188,6 +188,26 @@ inside CSS where an HTML-only scan would miss it.
 Verified by stopping the server outright: reading pages, in-app navigation and
 the offline fallback all resolve from cache.
 
+## Accounts
+
+Standalone email + password accounts, kept behind a thin boundary so SSO
+against `betterman.com/_hcms/mem/login` (spec §12) can replace how a session is
+*created* without touching how bookmarks, progress or saved steps are read.
+`User.passwordHash` is nullable for exactly that reason.
+
+- Passwords use scrypt from Node's own crypto, with the parameters stored
+  alongside the hash so they can be raised later without invalidating accounts.
+- The session cookie carries a random 256-bit token; the database stores only
+  its SHA-256, so a leaked table cannot be replayed as a login.
+- Sign-in answers identically for an unknown email and a wrong password, and
+  still spends the hashing time on a miss, so the form cannot be used to
+  discover which addresses are registered.
+- Saved Right Next Steps snapshot the step text. A later upstream edit — or a
+  parser improvement — must not rewrite a commitment someone already made.
+
+Not yet built: password reset and email verification, both of which need an
+outbound mail provider that is not configured.
+
 ## Phases
 
 Phase 0 (foundation) is complete. Subsequent phases are gated on the previous
@@ -200,7 +220,7 @@ one's acceptance criteria; see the build spec.
 | 2 | Chrome and archives | ✅ |
 | 3 | The three skins | ✅ |
 | 4 | PWA + offline | ✅ |
-| 5 | Accounts, bookmarks, saved Right Next Steps | |
+| 5 | Accounts, bookmarks, saved Right Next Steps | ✅ |
 | 6 | Notifications | |
 | 7 | Search + Scripture index | |
 | 8 | Admin — ingest health, parse review queue | |

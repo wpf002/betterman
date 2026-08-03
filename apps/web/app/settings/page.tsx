@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { PUBLICATIONS } from '@/lib/publications';
 import { IosInstallNotice } from '../_components/ios-install-notice';
+import { getSessionUser } from '@/lib/auth/session';
+import { signOut } from '@/lib/auth/actions';
 
 /**
  * Settings shell — one notification toggle per publication (spec §10). A
@@ -14,7 +17,9 @@ export const metadata: Metadata = {
   description: 'Choose which publications notify you.',
 };
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const user = await getSessionUser();
+
   return (
     <div className="mx-auto max-w-shell px-5 py-12 sm:py-16">
       <p className="bm-eyebrow">Settings</p>
@@ -52,6 +57,34 @@ export default function SettingsPage() {
       <p className="mt-6 max-w-measure text-[15px] text-mute">
         Notification delivery arrives in a later release. Nothing is sent yet.
       </p>
+
+      <section className="mt-16 border-t border-hair pt-8">
+        <h2 className="bm-eyebrow">Account</h2>
+
+        {user ? (
+          <>
+            <p className="mt-4 text-[17px]">{user.email}</p>
+            <p className="mt-1 text-[15px] text-mute">
+              Your bookmarks, progress and saved steps follow this account across devices.
+            </p>
+            <form action={signOut}>
+              <button
+                type="submit"
+                className="mt-6 rounded-pill border border-hair px-5 py-2.5 text-[12px] font-bold uppercase tracking-[2px] text-mute transition-colors hover:border-clay hover:text-clay-deep"
+              >
+                Sign out
+              </button>
+            </form>
+          </>
+        ) : (
+          <p className="mt-4 max-w-measure text-mute">
+            <Link href="/sign-in?next=%2Fsettings" className="text-clay-deep underline">
+              Sign in
+            </Link>{' '}
+            to keep your bookmarks and saved next steps.
+          </p>
+        )}
+      </section>
     </div>
   );
 }
