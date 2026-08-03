@@ -19,6 +19,12 @@ export const env = {
   /** Shared secret the inbound-email webhook must present (Phase 1). */
   ingestEmailSecret: process.env.INGEST_EMAIL_SECRET ?? null,
   webOrigin: optional('WEB_ORIGIN', 'http://localhost:3000'),
+
+  // Web Push (spec §10). Absent keys leave the worker idle rather than
+  // crashing the API — push is not required for reading.
+  vapidPublicKey: process.env.VAPID_PUBLIC_KEY ?? null,
+  vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? null,
+  vapidSubject: optional('VAPID_SUBJECT', 'mailto:info@betterman.com'),
 };
 
 export const isProduction = env.nodeEnv === 'production';

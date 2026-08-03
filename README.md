@@ -208,6 +208,36 @@ against `betterman.com/_hcms/mem/login` (spec §12) can replace how a session is
 Not yet built: password reset and email verification, both of which need an
 outbound mail provider that is not configured.
 
+## Notifications
+
+Web Push with VAPID. Generate a keypair once and put both halves in `.env`
+(the public key twice — the browser needs it to subscribe):
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Ingest is the trigger, not a schedule: `upsertItem` fans a notification out to
+every subscribed reader the moment a piece is first published, so a devotional
+that goes out at an unusual hour still notifies. A worker in `apps/api` then
+polls every 30s and delivers each row once its `deliverAfter` passes.
+
+What decides `deliverAfter`:
+
+- The Substacks have no morning ritual, so they go as soon as they land.
+- BetterMornings waits for the reader's chosen hour **in their own timezone**.
+  If the piece arrives after that hour it goes straight away — a Tuesday
+  devotional delivered on Wednesday is wrong — unless it is past 22:00 local,
+  in which case it holds for the next morning rather than buzzing a dark
+  bedroom.
+- Local hours are resolved by probing the zone rather than by adding a fixed
+  offset, so the two daylight-saving changeover days land on the hour.
+
+A piece held in `REVIEW` never notifies. The once-per-publication-per-day
+debounce claims a `push_logs` row before sending, so two workers cannot both
+deliver. Subscriptions answering 404 or 410 are pruned; other failures are not,
+since a transient 5xx is not a dead device.
+
 ## Phases
 
 Phase 0 (foundation) is complete. Subsequent phases are gated on the previous
@@ -221,7 +251,7 @@ one's acceptance criteria; see the build spec.
 | 3 | The three skins | ✅ |
 | 4 | PWA + offline | ✅ |
 | 5 | Accounts, bookmarks, saved Right Next Steps | ✅ |
-| 6 | Notifications | |
+| 6 | Notifications | ✅ |
 | 7 | Search + Scripture index | |
 | 8 | Admin — ingest health, parse review queue | |
 | 9 | Launch | |

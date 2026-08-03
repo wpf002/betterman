@@ -48,6 +48,7 @@ model Source {
   rawPayloads RawPayload[]
   prefs       NotificationPref[]
   pushLogs    PushLog[]
+  pending     PendingNotification[]
 
   @@map("sources")
 }
@@ -98,6 +99,7 @@ model Item {
   progress   ReadingProgress[]
   savedSteps SavedNextStep[]
   scriptures ScriptureRef[]
+  pending    PendingNotification[]
 
   @@unique([sourceId, externalId])
   @@unique([sourceId, slug])
@@ -245,6 +247,7 @@ model User {
   progress      ReadingProgress[]
   savedSteps    SavedNextStep[]
   pushLogs      PushLog[]
+  pending       PendingNotification[]
 
   @@map("users")
 }
@@ -304,6 +307,34 @@ model PushSubscription {
 
   @@index([userId])
   @@map("push_subscriptions")
+}
+
+/// A notification owed to one reader for one piece.
+///
+/// Ingest fans these out the moment it creates an item (spec §10 — the trigger
+/// is ingest, not a schedule, so an unusual send time still notifies). A worker
+/// then delivers each row once `deliverAfter` passes, which is what lets
+/// BetterMornings wait for the reader's chosen morning hour in their own zone.
+model PendingNotification {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceId String
+  source   Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  itemId   String
+  item     Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  /// Earliest moment this may be sent, already resolved to an instant.
+  deliverAfter DateTime
+  createdAt    DateTime  @default(now())
+  sentAt       DateTime?
+  /// Set when the row was deliberately not sent — debounced, unsubscribed,
+  /// or superseded. Kept rather than deleted so Phase 8 can explain a silence.
+  skippedReason String?
+
+  @@unique([userId, itemId])
+  @@index([sentAt, deliverAfter])
+  @@map("pending_notifications")
 }
 
 /// Debounce ledger: never more than one push per publication per day (spec §10).

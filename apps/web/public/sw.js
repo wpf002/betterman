@@ -15,7 +15,7 @@
  * Bump CACHE_VERSION to retire every old cache at once.
  */
 
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const SHELL_CACHE = `betterman-shell-${CACHE_VERSION}`;
 const PAGES_CACHE = `betterman-pages-${CACHE_VERSION}`;
 const ASSETS_CACHE = `betterman-assets-${CACHE_VERSION}`;
@@ -135,6 +135,66 @@ async function precacheSubresources(html, assets, seen) {
     }
   }
 }
+
+/* ---------------------------------------------------------------- push --- */
+
+/**
+ * A new piece landed. The payload carries the publication name, the headline
+ * and a deep link (spec §10).
+ *
+ * `userVisibleOnly` is a promise to the browser: every push must surface a
+ * notification, so a malformed payload still shows something rather than
+ * spending the app's silent-push budget.
+ */
+self.addEventListener('push', (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    payload = {};
+  }
+
+  const title = payload.title || 'BetterMan Reader';
+  const body = payload.body || 'Something new to read.';
+  const url = typeof payload.url === 'string' && payload.url.startsWith('/') ? payload.url : '/';
+
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      // Same tag replaces rather than stacks, so a redelivery cannot pile up.
+      tag: payload.tag || url,
+      data: { url },
+    }),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = event.notification.data?.url || '/';
+
+  event.waitUntil(
+    (async () => {
+      const clientList = await self.clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true,
+      });
+
+      // Reuse an open window where possible — on a home-screen PWA, opening a
+      // second one is jarring and loses the reader's place.
+      for (const client of clientList) {
+        if (new URL(client.url).origin === self.location.origin) {
+          await client.focus();
+          if ('navigate' in client) await client.navigate(target);
+          return;
+        }
+      }
+
+      await self.clients.openWindow(target);
+    })(),
+  );
+});
 
 self.addEventListener('message', (event) => {
   if (event.data === 'precache-recent') event.waitUntil(precacheRecent());

@@ -9,6 +9,7 @@ import { hashContent } from '../substack/normalize.js';
 import { sanitizeDevotionalHtml, htmlToText } from '../html/sanitize.js';
 import { parseDevotional, shouldPublish, toDateKey } from '../devotional/parse.js';
 import type { ParsedScriptureRef } from '../devotional/scripture.js';
+import { fanOutForItem } from '../notify/enqueue.js';
 
 export type UpsertOutcome = 'created' | 'updated' | 'unchanged';
 
@@ -89,11 +90,15 @@ export async function upsertItem(
     }
   }
 
-  return {
-    outcome: existing ? 'updated' : 'created',
-    itemId: record.id,
-    status: record.status,
-  };
+  const outcome: UpsertOutcome = existing ? 'updated' : 'created';
+
+  // Notify on first publication only. An edit or a reparse must not push
+  // the same piece at a reader twice (spec §10).
+  if (!existing && record.status === ItemStatus.PUBLISHED) {
+    await fanOutForItem(record.id).catch(() => undefined);
+  }
+
+  return { outcome, itemId: record.id, status: record.status };
 }
 
 /**

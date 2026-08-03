@@ -4,6 +4,8 @@ import { PUBLICATIONS } from '@/lib/publications';
 import { IosInstallNotice } from '../_components/ios-install-notice';
 import { getSessionUser } from '@/lib/auth/session';
 import { signOut } from '@/lib/auth/actions';
+import { getNotificationSettings } from '@/lib/notifications/actions';
+import { NotificationSettings } from '../_components/notification-settings';
 
 /**
  * Settings shell — one notification toggle per publication (spec §10). A
@@ -17,8 +19,11 @@ export const metadata: Metadata = {
   description: 'Choose which publications notify you.',
 };
 
+export const dynamic = 'force-dynamic';
+
 export default async function SettingsPage() {
   const user = await getSessionUser();
+  const settings = await getNotificationSettings();
 
   return (
     <div className="mx-auto max-w-shell px-5 py-12 sm:py-16">
@@ -30,33 +35,41 @@ export default async function SettingsPage() {
 
       <IosInstallNotice />
 
-      <ul className="mt-10 border-t border-hair sm:mt-12">
-        {PUBLICATIONS.map((pub) => (
-          <li
-            key={pub.slug}
-            className="flex items-center justify-between gap-6 border-b border-hair py-6"
-          >
-            <div>
-              <h2 className="text-[20px] font-normal leading-tight">{pub.name}</h2>
-              <p className="mt-1 text-[15px] text-mute">{pub.cadence}</p>
-            </div>
+      {user && settings ? (
+        <NotificationSettings
+          publications={PUBLICATIONS.map((p) => ({
+            slug: p.slug,
+            key: p.key,
+            name: p.name,
+            cadence: p.cadence,
+          }))}
+          initialPrefs={settings.prefs}
+          initialHour={settings.deliverHour}
+          initialDeviceCount={settings.deviceCount}
+          vapidPublicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ''}
+        />
+      ) : (
+        <ul className="mt-10 border-t border-hair sm:mt-12">
+          {PUBLICATIONS.map((pub) => (
+            <li
+              key={pub.slug}
+              className="flex items-center justify-between gap-6 border-b border-hair py-6"
+            >
+              <div>
+                <h2 className="text-[20px] font-normal leading-tight">{pub.name}</h2>
+                <p className="mt-1 text-[15px] text-mute">{pub.cadence}</p>
+              </div>
+              <span className="bm-eyebrow shrink-0">Sign in</span>
+            </li>
+          ))}
+        </ul>
+      )}
 
-            {/* Inert until Phase 6. Disabled rather than fake. */}
-            <label className="flex shrink-0 items-center gap-3">
-              <span className="sr-only">Notify me about {pub.name}</span>
-              <input
-                type="checkbox"
-                disabled
-                className="h-5 w-5 shrink-0 accent-clay disabled:cursor-not-allowed"
-              />
-            </label>
-          </li>
-        ))}
-      </ul>
-
-      <p className="mt-6 max-w-measure text-[15px] text-mute">
-        Notification delivery arrives in a later release. Nothing is sent yet.
-      </p>
+      {!user ? (
+        <p className="mt-6 max-w-measure text-[15px] text-mute">
+          Notifications follow your account, so they need you signed in.
+        </p>
+      ) : null}
 
       <section className="mt-16 border-t border-hair pt-8">
         <h2 className="bm-eyebrow">Account</h2>

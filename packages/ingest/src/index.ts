@@ -10,3 +10,5 @@ export * from './email/mime.js';
 export * from './substack/normalize.js';
 export * from './pipeline/upsert.js';
 export * from './pipeline/run.js';
+export * from './notify/schedule.js';
+export * from './notify/enqueue.js';
