@@ -52,8 +52,13 @@ Postgres binds to **5440** and Redis to **6381**, not their defaults — 5432 an
 6379 are usually already taken on a dev machine. `.env.example` and
 `docker-compose.yml` agree; change both together.
 
-The reader runs on `http://localhost:3000`, the API on `http://localhost:4000`.
-`GET /health` returns 200 once the process is up and the database answers.
+The reader runs on **`http://localhost:3100`** and the API on
+`http://localhost:4000`. `GET /health` returns 200 once the process is up and
+the database answers.
+
+3100 rather than 3000 deliberately, and pinned rather than auto-assigned: 3000
+is usually taken by something else on a dev machine, and a port that moves on
+every restart is a port you cannot bookmark.
 
 ## Design tokens
 
