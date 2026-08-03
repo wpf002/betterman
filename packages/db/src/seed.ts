@@ -1,9 +1,14 @@
 /**
- * Seeds the three publications. Idempotent — safe to re-run on every deploy.
+ * Seeds the three publications.
+ *
+ * Compiled into dist rather than run through tsx: tsx is a devDependency, and
+ * a production install may not have it. Migrations create the tables, but the
+ * source rows are data — without them ingest fails with "No Source found",
+ * which reads like a code bug rather than an empty database.
+ *
+ * Idempotent, so it is safe on every boot.
  */
 import { PrismaClient, SourceKey, SourceKind } from '@prisma/client';
-
-const prisma = new PrismaClient();
 
 const SOURCES = [
   {
@@ -35,30 +40,29 @@ const SOURCES = [
   },
 ] as const;
 
-async function main() {
-  for (const s of SOURCES) {
+export async function seedSources(prisma: PrismaClient): Promise<number> {
+  for (const source of SOURCES) {
     await prisma.source.upsert({
-      where: { key: s.key },
-      create: { ...s },
+      where: { key: source.key },
+      create: { ...source },
       update: {
-        kind: s.kind,
-        name: s.name,
-        slug: s.slug,
-        homeUrl: s.homeUrl,
-        feedUrl: s.feedUrl,
-        apiHost: s.apiHost,
+        kind: source.kind,
+        name: source.name,
+        slug: source.slug,
+        homeUrl: source.homeUrl,
+        feedUrl: source.feedUrl,
+        apiHost: source.apiHost,
       },
     });
   }
-  const count = await prisma.source.count();
-  console.log(`seeded sources — ${count} total`);
+  return prisma.source.count();
 }
 
-main()
+const prisma = new PrismaClient();
+seedSources(prisma)
+  .then((count) => console.log(`seeded sources — ${count} total`))
   .catch((err) => {
     console.error(err);
     process.exitCode = 1;
   })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  .finally(() => prisma.$disconnect());

@@ -15,15 +15,12 @@
     "build": "prisma generate && tsc -p tsconfig.json",
     "generate": "prisma generate",
     "migrate": "prisma migrate dev",
-    "seed": "tsx prisma/seed.ts",
+    "seed": "node dist/seed.js",
     "studio": "prisma studio",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "backup": "bash scripts/backup.sh",
     "make-admin": "tsx --env-file-if-exists=../../.env scripts/make-admin.ts",
     "migrate:deploy": "prisma migrate deploy"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "5.20.0"
