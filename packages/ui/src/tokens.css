@@ -73,8 +73,9 @@
   --jj-text: #363737;
   --jj-accent: #ff6719; /* Substack default orange — uncustomized */
 
-  /* Body is Spectral, a serif. Headings stay sans. */
-  --jj-font: 'Spectral', Georgia, Cambria, 'Times New Roman', serif;
+  /* Body is Spectral, a serif. Headings stay sans.
+     --font-spectral is provided by next/font; the stack stands alone without it. */
+  --jj-font: var(--font-spectral), 'Spectral', Georgia, Cambria, 'Times New Roman', serif;
   --jj-heading-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
     sans-serif;
   --jj-size: 19px;

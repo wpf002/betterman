@@ -1,9 +1,24 @@
 import type { Metadata, Viewport } from 'next';
+import { Spectral } from 'next/font/google';
 import { chrome, TYPEKIT_KIT_ID } from '@betterman/ui';
 import { SiteHeader } from './_components/site-header';
 import '@betterman/ui/tokens.css';
 import '@betterman/ui/styles.css';
+import '@betterman/ui/skins.css';
 import './globals.css';
+
+/**
+ * Josiah Jones' body face (spec §7). Self-hosted by next/font rather than
+ * linked, so the reading panel still renders correctly offline once the PWA
+ * caches it (Phase 4).
+ */
+const spectral = Spectral({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  style: ['normal', 'italic'],
+  variable: '--font-spectral',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: {
@@ -25,7 +40,7 @@ const kitId = process.env.NEXT_PUBLIC_TYPEKIT_KIT_ID ?? TYPEKIT_KIT_ID;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={spectral.variable}>
       <head>
         {/* Adobe Fonts — neue-haas-grotesk-display / -text. The stack in
             tokens.css stands alone if this fails to load. */}

@@ -17,7 +17,8 @@
     "ingest:substack": "tsx --env-file-if-exists=../../.env scripts/ingest-substack.ts",
     "ingest:email-dir": "tsx --env-file-if-exists=../../.env scripts/ingest-email-dir.ts",
     "ingest:email-imap": "tsx --env-file-if-exists=../../.env scripts/ingest-email-imap.ts",
-    "build": "tsc -p tsconfig.build.json"
+    "build": "tsc -p tsconfig.build.json",
+    "reparse": "tsx --env-file-if-exists=../../.env scripts/reparse.ts"
   },
   "dependencies": {
     "@betterman/db": "workspace:*",

@@ -71,6 +71,11 @@ const BASE_OPTIONS: sanitizeHtml.IOptions = {
 export function sanitizeDevotionalHtml(rawHtml: string): string {
   const $ = cheerio.load(rawHtml, null, false);
 
+  // Document head. sanitize-html drops these TAGS but keeps their text, so
+  // <title>BetterMornings Devo</title> would otherwise surface as a stray line
+  // at the top of the panel.
+  $('head, title, style, script, meta, link').remove();
+
   // 1x1 open-tracking pixels, and any zero-size image.
   $('img').each((_, el) => {
     const $img = $(el);

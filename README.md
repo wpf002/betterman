@@ -154,6 +154,18 @@ appears after a section has opened** — otherwise ordinary prose ("Richard
 Sibbes observed: …") and colon-bearing titles read as false alarms. Across the
 34 devotionals the minimum score is now **0.93** and none are held.
 
+## Replaying the archive
+
+```bash
+pnpm reparse                        # every source
+pnpm reparse --source bettermornings
+```
+
+Applies the current parser and sanitizer to everything already stored, from the
+database alone — no network, no credentials. This is what the `raw_payloads`
+table exists for, and it is the only way to fix the archive once a mailbox app
+password has been revoked.
+
 ## Phases
 
 Phase 0 (foundation) is complete. Subsequent phases are gated on the previous
@@ -164,7 +176,7 @@ one's acceptance criteria; see the build spec.
 | 0 | Foundation — repo, schema, CI, tokens, logos | ✅ |
 | 1 | Ingest — RSS backfill, email parser, normalizer | ✅ (see caveats above) |
 | 2 | Chrome and archives | ✅ |
-| 3 | The three skins | |
+| 3 | The three skins | ✅ |
 | 4 | PWA + offline | |
 | 5 | Accounts, bookmarks, saved Right Next Steps | |
 | 6 | Notifications | |

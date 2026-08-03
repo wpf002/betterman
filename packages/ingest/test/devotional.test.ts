@@ -318,6 +318,15 @@ describe('devotional sanitizing', () => {
     expect(clean).not.toContain('preview_text');
   });
 
+  it('drops the document head, whose <title> text would otherwise surface', () => {
+    const withHead = `<html><head><title>BetterMornings Devo</title><style>p{color:red}</style></head>${ERA_2026}</html>`;
+    const out = sanitizeDevotionalHtml(withHead);
+    expect(out).not.toContain('BetterMornings Devo');
+    expect(out).not.toContain('color:red');
+    // The devotional itself is untouched.
+    expect(out).toContain('Thirsty?');
+  });
+
   it('keeps all three BetterMan CTAs — they are real actions', () => {
     expect(clean).toContain('GIVE TO BETTERMAN');
     expect(clean).toContain('GET CONNECTED');

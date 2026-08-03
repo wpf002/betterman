@@ -79,6 +79,57 @@ export async function getLatestByPublication(
   return new Map(entries);
 }
 
+/** One piece, with everything a reading panel needs. */
+export interface ReadingItem {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle: string | null;
+  publishedAt: Date;
+  canonicalUrl: string | null;
+  /** Sanitized at ingest. Rendered as-is — never sanitized on render (§13). */
+  contentHtml: string;
+  devotional: {
+    date: Date;
+    scriptureRef: string | null;
+    rightNextStep: string | null;
+  } | null;
+}
+
+export async function getItem(pub: Publication, slug: string): Promise<ReadingItem | null> {
+  const item = await prisma.item.findFirst({
+    where: { source: { key: pub.key }, slug, status: ItemStatus.PUBLISHED },
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      subtitle: true,
+      publishedAt: true,
+      canonicalUrl: true,
+      contentHtml: true,
+      devotional: { select: { date: true, scriptureRef: true, rightNextStep: true } },
+    },
+  });
+  return item ?? null;
+}
+
+/** Previous and next piece within the same publication, by publication date. */
+export async function getNeighbours(pub: Publication, publishedAt: Date) {
+  const [older, newer] = await Promise.all([
+    prisma.item.findFirst({
+      where: { source: { key: pub.key }, status: ItemStatus.PUBLISHED, publishedAt: { lt: publishedAt } },
+      orderBy: { publishedAt: 'desc' },
+      select: { slug: true, title: true },
+    }),
+    prisma.item.findFirst({
+      where: { source: { key: pub.key }, status: ItemStatus.PUBLISHED, publishedAt: { gt: publishedAt } },
+      orderBy: { publishedAt: 'asc' },
+      select: { slug: true, title: true },
+    }),
+  ]);
+  return { older, newer };
+}
+
 export async function countPublished(pub: Publication): Promise<number> {
   return prisma.item.count({
     where: { source: { key: pub.key }, status: ItemStatus.PUBLISHED },

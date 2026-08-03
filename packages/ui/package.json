@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./tokens.css": "./src/tokens.css",
-    "./styles.css": "./src/styles.css"
+    "./styles.css": "./src/styles.css",
+    "./skins.css": "./src/skins.css"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit"
