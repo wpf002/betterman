@@ -26,6 +26,9 @@ export async function upsertItem(
     status?: ItemStatus;
     devotional?: Prisma.DevotionalUncheckedCreateWithoutItemInput;
     scriptureRefs?: ParsedScriptureRef[];
+    /** Rewrite even when the source is byte-identical — used to replay a
+     *  stored payload through an improved parser. */
+    force?: boolean;
   } = {},
 ): Promise<UpsertResult> {
   const status = extra.status ?? ItemStatus.PUBLISHED;
@@ -37,7 +40,7 @@ export async function upsertItem(
 
   // Nothing upstream changed and the gate verdict is the same — leave it alone
   // so re-running ingest is a genuine no-op.
-  if (existing && existing.contentHash === item.contentHash && existing.status === status) {
+  if (!extra.force && existing && existing.contentHash === item.contentHash && existing.status === status) {
     return { outcome: 'unchanged', itemId: existing.id, status: existing.status };
   }
 
@@ -100,7 +103,7 @@ export async function upsertItem(
 export async function ingestDevotionalEmail(
   source: Pick<Source, 'id'>,
   rawHtml: string,
-  opts: { messageId?: string; receivedAt?: Date } = {},
+  opts: { messageId?: string; receivedAt?: Date; force?: boolean } = {},
 ): Promise<UpsertResult & { parseQuality: number; dateKey: string | null }> {
   const parsed = parseDevotional(rawHtml);
   const contentHtml = sanitizeDevotionalHtml(rawHtml);
@@ -129,6 +132,7 @@ export async function ingestDevotionalEmail(
   const publish = shouldPublish(parsed.parseQuality);
 
   const result = await upsertItem(source, item, {
+    force: opts.force,
     status: publish ? ItemStatus.PUBLISHED : ItemStatus.REVIEW,
     devotional: {
       date,
@@ -137,6 +141,7 @@ export async function ingestDevotionalEmail(
       thought: parsed.thought,
       reflect: parsed.reflect,
       rightNextStep: parsed.rightNextStep,
+      fightPlan: parsed.fightPlan,
       prayer: parsed.prayer,
       parseQuality: parsed.parseQuality,
       templateEra: parsed.templateEra,

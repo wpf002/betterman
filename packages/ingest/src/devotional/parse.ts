@@ -35,6 +35,8 @@ export interface ParsedDevotional {
   thought: string | null;
   reflect: string | null;
   rightNextStep: string | null;
+  /** "Fight Plan" — a practice list carried by the autumn 2025 editions. */
+  fightPlan: string | null;
   prayer: string | null;
 
   /** 0–1. Below PARSE_QUALITY_THRESHOLD the item is held for review. */
@@ -61,7 +63,7 @@ const MONTHS = [
 /** "July 28, 2026" → Date (UTC midnight; the devotional is a calendar day). */
 export function parseDevotionalDate(raw: string): Date | null {
   const m = raw
-    .replace(/ /g, ' ')
+    .replace(/[\u00A0\u2007\u202F\uFEFF]/g, ' ')
     .trim()
     .match(/([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})/);
   if (!m) return null;
@@ -73,6 +75,12 @@ export function parseDevotionalDate(raw: string): Date | null {
 
 export function toDateKey(date: Date): string {
   return date.toISOString().slice(0, 10);
+}
+
+interface Paragraph {
+  text: string;
+  /** Whether this paragraph opens with an emphasized "Label:" run. */
+  labelIsBold: boolean;
 }
 
 /** Normalizes the text of one paragraph: nbsp folded, whitespace collapsed. */
@@ -118,22 +126,46 @@ export function parseDevotional(html: string): ParsedDevotional {
     ? $('[data-hs-cos-type="rich_text"]')
     : $('body');
 
-  const paragraphs: string[] = [];
-  $scope
-    .find('p, li')
-    .each((_, el) => {
-      const text = paragraphText($(el));
-      if (text) paragraphs.push(text);
-    });
+  const paragraphs: Paragraph[] = [];
+  $scope.find('p, li').each((_, el) => {
+    const $el = $(el);
+    const text = paragraphText($el);
+    if (!text) return;
+
+    // A real section label is emphasized in every template era we have seen.
+    // KNOWN labels are still matched on text alone, in any markup — this flag
+    // only decides whether an UNKNOWN "Word:" opener is a template change or
+    // ordinary prose ("Richard Sibbes observed: …", "Rahab: …").
+    const lead = $el.children('strong, b').first().text().trim();
+    const labelIsBold = lead.length > 0 && text.startsWith(lead);
+
+    paragraphs.push({ text, labelIsBold });
+  });
 
   // --- Title ------------------------------------------------------------
-  // The first content paragraph before any labelled section starts.
+  // The first content paragraph before any labelled section starts. Some
+  // editions open straight into Scripture; those fall back to the preheader,
+  // which carries the same headline the subject line shows.
   let title: string | null = null;
-  for (const p of paragraphs) {
-    const split = splitLabel(p);
-    if (split && resolveSection(split.label)) break;
-    title = p.replace(/\s*[?？]\s*$/, (m) => m.trim());
-    break;
+  const first = paragraphs[0];
+  if (first) {
+    const split = splitLabel(first.text);
+    if (!split || !resolveSection(split.label)) title = first.text;
+  }
+  if (!title) {
+    const preheader = $('#preview_text')
+      .text()
+      // Preheaders are padded with invisible filler (zero-width spaces, soft
+      // hyphens, combining joiners) to control the inbox preview length.
+      .replace(
+        /[\u00A0\u00AD\u061C\u180E\u200B-\u200F\u202F\u205F\u2060-\u2064\u206A-\u206F\uFEFF]/g,
+        ' ',
+      )
+      // Combining marks must be folded outside a character class.
+      .replace(/\u034F/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (preheader) title = preheader;
   }
 
   // --- Sections ---------------------------------------------------------
@@ -143,22 +175,33 @@ export function parseDevotional(html: string): ParsedDevotional {
   let current: DevotionalSection | null = null;
 
   for (const p of paragraphs) {
-    const split = splitLabel(p);
+    const split = splitLabel(p.text);
     if (split) {
       const section = resolveSection(split.label);
       if (section) {
         current = section;
         matchedLabels.push(split.label.trim().toLowerCase());
-        sections[section] = split.rest ? [split.rest] : [];
+        // A section can be opened more than once (the Fight Plan's own bullet
+        // labels all map onto it), so append rather than replace.
+        const existing = sections[section] ?? [];
+        sections[section] = split.rest ? [...existing, split.rest] : existing;
         continue;
       }
-      // A label-shaped opener we do not know. Record it once, for the review
-      // queue, but keep the paragraph as body text of the open section.
-      if (split.label.length <= 24 && !unmatched.includes(split.label.trim())) {
+      // A label-shaped opener we do not know. Two things disqualify it:
+      // it is not emphasized (ordinary prose — "Richard Sibbes observed: …"),
+      // or no section has opened yet, which means we are still on the title
+      // line, and titles carry colons of their own ("Rahab: Grace for
+      // Outsiders").
+      if (
+        current !== null &&
+        p.labelIsBold &&
+        split.label.length <= 24 &&
+        !unmatched.includes(split.label.trim())
+      ) {
         unmatched.push(split.label.trim());
       }
     }
-    if (current) sections[current]?.push(p);
+    if (current) sections[current]?.push(p.text);
   }
 
   const join = (section: DevotionalSection): string | null => {
@@ -189,6 +232,7 @@ export function parseDevotional(html: string): ParsedDevotional {
     thought: join('thought'),
     reflect: join('reflect'),
     rightNextStep: join('rightNextStep'),
+    fightPlan: join('fightPlan'),
     prayer: join('prayer'),
     templateEra,
     unmatched,
@@ -218,8 +262,10 @@ export function scoreParseQuality(d: Omit<ParsedDevotional, 'parseQuality'>): nu
   let score = checks.reduce((sum, [weight, ok]) => sum + (ok ? weight : 0), 0);
 
   // An unrecognized label means the template moved under us — the fields we
-  // did fill may be wrong, so force a human look.
-  if (d.unmatched.length > 0) score -= 0.15 * d.unmatched.length;
+  // did fill may be wrong, so force a human look. One flat penalty: a new
+  // section with six bullet labels is still one template change, and scaling
+  // per label just buries the score without adding information.
+  if (d.unmatched.length > 0) score -= 0.15;
   if (d.templateEra === null) score -= 0.05;
 
   return Math.max(0, Math.min(1, Number(score.toFixed(4))));

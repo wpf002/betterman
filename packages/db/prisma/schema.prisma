@@ -125,6 +125,8 @@ model Devotional {
   reflect       String?
   /// "Call to Action" (Nov 2025) or "Right Next Step" (Jul 2026).
   rightNextStep String?
+  /// "Fight Plan" — a short practice list carried by the autumn 2025 editions.
+  fightPlan     String?
   prayer        String?
 
   /// 0–1. Below 0.9 the item is held in REVIEW instead of published (spec §9).

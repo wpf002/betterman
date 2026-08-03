@@ -144,6 +144,133 @@ describe('devotional parsing — 2026-07 era ("Reflect" / "Right Next Step")', (
   });
 });
 
+/**
+ * These cases all come from real editions found during the mailbox backfill —
+ * each one was holding a devotional in the review queue.
+ */
+describe('template variants found in the live archive', () => {
+  const wrap = (body: string) =>
+    `<body><div data-hs-cos-type="rich_text"><h2>September 16, 2025</h2>${body}</div></body>`;
+
+  it('reads a scripture reference printed in parentheses', () => {
+    const parsed = parseDevotional(
+      wrap(
+        `<p>Wise In Your Own Eyes</p>
+         <p><strong>Scripture:</strong> “Do you see a person wise in their own eyes? There is more hope for a fool than for them.” (Proverbs 26:12)</p>
+         <p><strong>Thought:</strong> ${'Pride is the quiet sin. '.repeat(4)}</p>`,
+      ),
+    );
+    expect(parsed.scriptureRef).toBe('Proverbs 26:12');
+    expect(parsed.scriptureText).toContain('wise in their own eyes');
+    expect(parsed.scriptureRefs[0]).toMatchObject({ book: 'Proverbs', chapter: 26 });
+  });
+
+  it('reads a scripture reference in square brackets', () => {
+    const parsed = parseDevotional(
+      wrap(
+        `<p>The Father’s Blessing</p>
+         <p><strong>Scripture:</strong> “This is my beloved Son, with whom I am well pleased.” [Matthew 3:17]</p>`,
+      ),
+    );
+    expect(parsed.scriptureRef).toBe('Matthew 3:17');
+  });
+
+  it('reads a reference set off by a dash with no trailing space', () => {
+    const parsed = parseDevotional(
+      wrap(
+        `<p>Brotherhood</p>
+         <p><strong>Scripture:</strong> “Behold, how good and pleasant it is when brothers dwell in unity!” —Psalm 133:1</p>`,
+      ),
+    );
+    expect(parsed.scriptureRef).toBe('Psalm 133:1');
+    expect(parsed.scriptureText).toContain('brothers dwell in unity');
+  });
+
+  it('does not treat a colon in the title as a section label', () => {
+    const parsed = parseDevotional(
+      wrap(
+        `<p><strong>Rahab: Grace for Outsiders</strong></p>
+         <p><strong>Scripture:</strong> “Be strong.” — Joshua 1:9</p>`,
+      ),
+    );
+    expect(parsed.unmatched).toEqual([]);
+    expect(parsed.title).toBe('Rahab: Grace for Outsiders');
+  });
+
+  it('accepts "Read:" as the scripture label', () => {
+    const parsed = parseDevotional(
+      wrap(
+        `<p><strong>The Word Became Flesh</strong></p>
+         <p><strong>Read:</strong> “And the Word became flesh and dwelt among us.” — John 1:14</p>`,
+      ),
+    );
+    expect(parsed.scriptureRef).toBe('John 1:14');
+    expect(parsed.unmatched).toEqual([]);
+  });
+
+  it('collects a Fight Plan and its bullet labels into one section', () => {
+    const parsed = parseDevotional(
+      wrap(
+        `<p><strong>Scripture:</strong> “Be strong.” — Joshua 1:9</p>
+         <p><strong>Weekly Fight Plan:</strong></p>
+         <p><strong>Memorize:</strong> Joshua 1:9</p>
+         <p><strong>Practice:</strong> Ten minutes of silence.</p>
+         <p><strong>Confess:</strong> Name it to one man.</p>`,
+      ),
+    );
+    expect(parsed.fightPlan).toContain('Joshua 1:9');
+    expect(parsed.fightPlan).toContain('Ten minutes of silence.');
+    expect(parsed.fightPlan).toContain('Name it to one man.');
+    // A known section, so nothing is flagged as a template change.
+    expect(parsed.unmatched).toEqual([]);
+  });
+
+  it('does not mistake prose for a section label', () => {
+    const parsed = parseDevotional(
+      wrap(
+        `<p><strong>Scripture:</strong> “Be strong.” — Joshua 1:9</p>
+         <p><strong>Thought:</strong> Consider the following.</p>
+         <p>Richard Sibbes observed: the heart is never idle.</p>
+         <p>Rahab: a woman the genealogy refused to hide.</p>`,
+      ),
+    );
+    expect(parsed.unmatched).toEqual([]);
+    // Unemphasized prose stays in the section it appeared under.
+    expect(parsed.thought).toContain('Richard Sibbes observed');
+  });
+
+  it('still flags an emphasized label it does not know', () => {
+    const parsed = parseDevotional(
+      wrap(
+        `<p><strong>Scripture:</strong> “Be strong.” — Joshua 1:9</p>
+         <p><strong>Sponsored By:</strong> Someone new.</p>`,
+      ),
+    );
+    expect(parsed.unmatched).toContain('Sponsored By');
+  });
+
+  it('falls back to the preheader when an edition has no title line', () => {
+    const parsed = parseDevotional(
+      `<body><div id="preview_text">Wise In Your Own Eyes&nbsp; ͏ ͏ ͏</div>
+       <div data-hs-cos-type="rich_text"><h2>September 16, 2025</h2>
+       <p><strong>Scripture:</strong> “Be strong.” — Joshua 1:9</p></div></body>`,
+    );
+    expect(parsed.title).toBe('Wise In Your Own Eyes');
+  });
+
+  it('penalizes a template change once, not once per stray label', () => {
+    const many = parseDevotional(
+      wrap(
+        `<p><strong>Scripture:</strong> “Be strong.” — Joshua 1:9</p>
+         <p><strong>Alpha:</strong> a</p><p><strong>Beta:</strong> b</p><p><strong>Gamma:</strong> c</p>`,
+      ),
+    );
+    expect(many.unmatched).toHaveLength(3);
+    // Three stray labels are still one template change, not a -0.45 cliff.
+    expect(many.parseQuality).toBeGreaterThan(0);
+  });
+});
+
 describe('parse quality gating', () => {
   it('holds a devotional whose template moved under us', () => {
     const broken = ERA_2026.replace('<strong>Reflect:</strong>', '<strong>Ponder This:</strong>');
@@ -163,7 +290,7 @@ describe('parse quality gating', () => {
       scoreParseQuality({
         date: null, dateKey: null, title: null,
         scriptureText: null, scriptureRef: null, thought: null,
-        reflect: null, rightNextStep: null, prayer: null,
+        reflect: null, rightNextStep: null, fightPlan: null, prayer: null,
         templateEra: null, unmatched: [], scriptureRefs: [],
       }),
     ).toBe(0);

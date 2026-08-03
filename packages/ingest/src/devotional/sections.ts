@@ -17,6 +17,7 @@ export const DEVOTIONAL_SECTIONS = [
   'thought',
   'reflect',
   'rightNextStep',
+  'fightPlan',
   'prayer',
 ] as const;
 
@@ -24,7 +25,8 @@ export type DevotionalSection = (typeof DEVOTIONAL_SECTIONS)[number];
 
 /** Alias table, per section. Compared case- and punctuation-insensitively. */
 export const SECTION_ALIASES: Record<DevotionalSection, readonly string[]> = {
-  scripture: ['scripture', 'scripture reading', 'the scripture'],
+  // "Read" appears in place of "Scripture" from mid-2026.
+  scripture: ['scripture', 'scripture reading', 'the scripture', 'read', 'read this'],
   thought: ['thought', 'thoughts', 'the thought', "today's thought"],
   reflect: ['reflect', 'reflection', 'reflections', 'reflect on this'],
   rightNextStep: [
@@ -33,6 +35,22 @@ export const SECTION_ALIASES: Record<DevotionalSection, readonly string[]> = {
     'next step',
     'your right next step',
     'action step',
+  ],
+  /**
+   * Autumn 2025 editions carry a "Fight Plan" — a short practice list. Its own
+   * bullet labels are aliased onto the same section so they read as part of it
+   * rather than as an unknown template change.
+   */
+  fightPlan: [
+    'fight plan',
+    'fight plan move',
+    'weekly fight plan',
+    'this weeks fight plan',
+    'memorize',
+    'practice',
+    'limit',
+    'bless',
+    'confess',
   ],
   prayer: ['prayer', 'a prayer', "today's prayer"],
 };

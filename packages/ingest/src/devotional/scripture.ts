@@ -150,12 +150,25 @@ export function splitScriptureLine(text: string): { text: string | null; ref: st
   const trimmed = text.trim();
   if (!trimmed) return { text: null, ref: null };
 
+  // Some editions bracket the reference instead of setting it off with a dash:
+  //   “Do you see a person wise in their own eyes?…” (Proverbs 26:12)
+  //   “…Where are you?’” [Genesis 3:9]
+  const bracketed = trimmed.match(/^(.*?)\s*[([]([^)\]]{3,60})[)\]]\s*$/s);
+  if (bracketed) {
+    const [, body, ref] = bracketed;
+    if (ref && parseScriptureRefs(ref).length > 0) {
+      return { text: stripQuotes((body ?? '').trim()), ref: ref.trim() };
+    }
+  }
+
   // Candidate separators are spaced dashes. Verses contain dashes of their own
   // ("a new year—clean, untouched—"), and so do references ("John 4:11–15"),
   // so we try candidates from the RIGHT and accept the first whose tail
   // actually parses as a reference.
   const candidates: number[] = [];
-  for (const m of trimmed.matchAll(/\s[—–-]\s/g)) {
+  // The space AFTER the dash is optional ("unity!” —Psalm 133:1"); the space
+  // BEFORE it is not, or every hyphenated word inside a verse would match.
+  for (const m of trimmed.matchAll(/\s[—–-]\s*/g)) {
     if (m.index !== undefined) candidates.push(m.index);
   }
 

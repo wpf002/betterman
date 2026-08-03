@@ -106,6 +106,18 @@ replayed without re-fetching.
   pulls it with an app password (see `.env.example`); live delivery goes to
   `POST /ingest/email`. Both paths share one normalizer, so they cannot drift.
 
+  Two mailbox gotchas the script handles. It reads the `\All` special-use
+  mailbox ("[Gmail]/All Mail"), not `INBOX` — archiving a message removes it
+  from the inbox, so a backfill against `INBOX` finds almost nothing. And IMAP
+  `SEARCH` returns sequence numbers unless UIDs are requested; feeding those to
+  a UID fetch matches nothing at all, silently.
+
+  The subscribed mailbox holds **42** messages from `info@betterman.com`, of
+  which **34** are devotionals (the rest are other BetterMan mail, skipped by
+  sender+subject). Gmail's search UI reports a much larger figure — that is an
+  estimate, not a count. Add `--reparse` to replay stored payloads through an
+  improved parser.
+
 ### The devotional normalizer
 
 The HubSpot template has changed at least twice, so the parser matches on
@@ -123,6 +135,24 @@ Both eras are covered by fixture tests and parse at quality **1.000**. Note the
 spec described the older era's labels as plain text; the captured Nov/Dec 2025
 email wraps them in `<strong>` too, which is exactly why nothing branches on
 markup. Anything scoring below **0.9** is held in `REVIEW` instead of published.
+
+The live archive turned up more variation than two eras suggests. Every case
+below was holding a real devotional in the review queue, and each is now a
+regression test:
+
+| Variant | Seen as |
+| --- | --- |
+| Reference in brackets | `(Proverbs 26:12)`, `[Genesis 3:9]` |
+| Dash with no trailing space | `—Psalm 133:1` |
+| `Read:` in place of `Scripture:` | Jul 2026 editions |
+| A **Fight Plan** section | autumn 2025, with its own bullet labels |
+| Editions with no Reflect section | Sep–Oct 2025 |
+| Titles containing a colon | "Rahab: Grace for Outsiders" |
+
+An unknown label only counts as a template change when it is **emphasized and
+appears after a section has opened** — otherwise ordinary prose ("Richard
+Sibbes observed: …") and colon-bearing titles read as false alarms. Across the
+34 devotionals the minimum score is now **0.93** and none are held.
 
 ## Phases
 
