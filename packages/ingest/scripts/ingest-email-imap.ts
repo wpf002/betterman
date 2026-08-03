@@ -34,6 +34,16 @@ const { IMAP_HOST, IMAP_PORT, IMAP_USER, IMAP_PASSWORD, IMAP_MAILBOX } = process
  *  current parser. Use it after a parser fix. */
 const force = process.argv.includes('--reparse');
 
+/**
+ * --include-trash also reads deleted mail.
+ *
+ * Off by default: deleting is a decision, and quietly resurrecting someone's
+ * deleted mail is not ours to make. But a reader who deletes the daily email
+ * after reading it has still read it, and the archive should hold it — so the
+ * flag exists.
+ */
+const includeTrash = process.argv.includes('--include-trash');
+
 async function main() {
   if (!IMAP_HOST || !IMAP_USER || !IMAP_PASSWORD) {
     console.error(
@@ -65,27 +75,35 @@ async function main() {
   // what has not been filed yet, and a backfill run against it silently finds
   // almost nothing. The \All special-use mailbox ("[Gmail]/All Mail") holds
   // everything. IMAP_MAILBOX still overrides when set.
-  let mailbox = IMAP_MAILBOX;
-  if (!mailbox) {
-    const boxes = await client.list();
-    mailbox =
-      boxes.find((b) => b.specialUse === '\\All')?.path ??
-      boxes.find((b) => /all mail/i.test(b.path))?.path ??
-      'INBOX';
-  }
-  console.log(`mailbox: ${mailbox}`);
+  const boxes = await client.list();
+  const mailboxes = IMAP_MAILBOX
+    ? [IMAP_MAILBOX]
+    : [
+        boxes.find((b) => b.specialUse === '\\All')?.path ??
+          boxes.find((b) => /all mail/i.test(b.path))?.path ??
+          'INBOX',
+        ...(includeTrash
+          ? [
+              boxes.find((b) => b.specialUse === '\\Trash')?.path ??
+                boxes.find((b) => /trash/i.test(b.path))?.path,
+            ].filter((p): p is string => Boolean(p))
+          : []),
+      ];
 
-  const lock = await client.getMailboxLock(mailbox);
+  console.log(`mailboxes: ${mailboxes.join(', ')}`);
 
   const run = await startRun(source.id, 'email-imap-backfill');
   const counters = { seen: 0, created: 0, updated: 0, skipped: 0, inReview: 0 };
   const held: string[] = [];
 
   try {
+    for (const mailbox of mailboxes) {
+      const lock = await client.getMailboxLock(mailbox);
+      try {
     // `search` returns SEQUENCE numbers unless uid:true is passed. Feeding
     // those to a uid-based fetch silently matches nothing.
     const uids = await client.search({ from: BETTERMORNINGS_SENDER }, { uid: true });
-    console.log(`${uids ? uids.length : 0} message(s) from ${BETTERMORNINGS_SENDER}`);
+    console.log(`  ${mailbox}: ${uids ? uids.length : 0} message(s)`);
 
     for (const uid of uids || []) {
       const message = await client.fetchOne(String(uid), { source: true }, { uid: true });
@@ -129,12 +147,16 @@ async function main() {
       }
     }
 
+      } finally {
+        lock.release();
+      }
+    }
+
     await finishRun(run.id, counters, IngestStatus.SUCCESS);
   } catch (err) {
     await finishRun(run.id, counters, IngestStatus.FAILED, String(err));
     throw err;
   } finally {
-    lock.release();
     await client.logout();
   }
 
