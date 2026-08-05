@@ -14,5 +14,6 @@ export * from './pipeline/upsert.js';
 export * from './pipeline/run.js';
 export * from './pipeline/reparse.js';
 export * from './pipeline/scripture-backfill.js';
+export * from './pipeline/prune-stubs.js';
 export * from './notify/schedule.js';
 export * from './notify/enqueue.js';

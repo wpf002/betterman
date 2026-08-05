@@ -13,6 +13,7 @@ import {
 } from '../substack/archive.js';
 import {
   MIN_BODY_CHARS,
+  hasReadableArticle,
   isReadableArticle,
   normalizeSubstackPost,
   scriptureRefsForArticle,
@@ -143,6 +144,15 @@ export async function ingestSubstackSource(
       });
 
       const normalized = normalizeSubstackPost(entry, bodyHtml, host);
+
+      // Checked after sanitizing, not before: a live-video announcement has
+      // plenty of markup and almost no words.
+      if (!hasReadableArticle(normalized)) {
+        log(`  ! ${entry.slug} — skipped (no article, ${normalized.contentText.length} chars)`);
+        counters.skipped += 1;
+        continue;
+      }
+
       const result = await upsertItem(source, normalized, {
         scriptureRefs: scriptureRefsForArticle(normalized),
       });

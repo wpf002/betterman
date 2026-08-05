@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { sanitizeArticleHtml } from '../src/html/sanitize';
 import {
+  hasReadableArticle,
   hashContent,
   isReadableArticle,
   normalizeSubstackPost,
@@ -28,6 +29,37 @@ describe('readability filter', () => {
 
   it('skips paywalled posts — the public endpoints only return a teaser', () => {
     expect(isReadableArticle(entry({ audience: 'only_paid' }))).toBe(false);
+  });
+});
+
+describe('hasReadableArticle — an announcement is not an article', () => {
+  /** The whole body of a Substack live-video post, verbatim. */
+  const LIVE_VIDEO_STUB =
+    '<div><p>Thank you , , and many others for tuning into my live video! ' +
+    'Join me for my next live video in the app.</p>' +
+    '<p>Get more from Harp in the Substack app</p>' +
+    '<p>Available for iOS and Android</p><p>Get the app</p></div>';
+
+  it('rejects a live-video announcement', () => {
+    const item = normalizeSubstackPost(
+      entry({ title: 'Live with Harp', type: 'podcast' }),
+      LIVE_VIDEO_STUB,
+      'charper.substack.com',
+    );
+
+    // The markup clears MIN_BODY_CHARS on its own — which is exactly why the
+    // check has to run on the sanitized text instead.
+    expect(LIVE_VIDEO_STUB.length).toBeGreaterThan(200);
+    expect(hasReadableArticle(item)).toBe(false);
+  });
+
+  it('keeps a real article', () => {
+    const item = normalizeSubstackPost(
+      entry(),
+      `<p>${'A man builds his life on what he repeats. '.repeat(20)}</p>`,
+      'charper.substack.com',
+    );
+    expect(hasReadableArticle(item)).toBe(true);
   });
 });
 

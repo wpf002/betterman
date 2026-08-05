@@ -47,6 +47,27 @@ export function isReadableArticle(
 /** Bodies shorter than this are teasers or stubs, not the piece itself. */
 export const MIN_BODY_CHARS = 400;
 
+/**
+ * Readable prose shorter than this is not an article.
+ *
+ * MIN_BODY_CHARS measures the HTML, which a live-video announcement passes
+ * easily — the markup for an embedded player is long, and the words are
+ * "Thank you for tuning into my live video!" and nothing else. Eleven of those
+ * sat in Good Trouble's archive of fifteen, each one a dead end for a reader.
+ *
+ * Measuring the sanitized TEXT is what separates them: the stubs run 81–185
+ * characters and the shortest real article in the library is 2,684, so this
+ * threshold sits in a very wide gap. It is deliberately not a filter on post
+ * type — a podcast episode with real show notes is still worth reading, and
+ * an essay with no notes is not.
+ */
+export const MIN_ARTICLE_TEXT_CHARS = 400;
+
+/** Whether a normalized post actually has an article in it. */
+export function hasReadableArticle(item: Pick<NormalizedItem, 'contentText'>): boolean {
+  return item.contentText.trim().length >= MIN_ARTICLE_TEXT_CHARS;
+}
+
 export function normalizeSubstackPost(
   entry: SubstackArchiveEntry,
   bodyHtml: string,
