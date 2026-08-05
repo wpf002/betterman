@@ -29,7 +29,8 @@ export const PUBLICATIONS: readonly Publication[] = [
     key: SourceKey.GOOD_TROUBLE,
     name: 'Good Trouble',
     cadence: 'About twice a week',
-    blurb: 'Chris Harper on the church, culture and courage.',
+    // Each author's own line, not a description written for them.
+    blurb: "If you're going to be trouble... be good trouble.",
     homeUrl: 'https://charper.substack.com',
   },
   {
@@ -37,7 +38,8 @@ export const PUBLICATIONS: readonly Publication[] = [
     key: SourceKey.JOSIAH_JONES,
     name: 'Josiah Jones',
     cadence: 'Irregular',
-    blurb: 'Essays from Josiah Jones.',
+    blurb:
+      'Jesus Follower, Husband to Cathy Jones 🤍 Dad of three 👧🏻👧🏼👶🏻 For speaking request + consulting josiahjones.org',
     homeUrl: 'https://josiahjones1.substack.com',
   },
 ];

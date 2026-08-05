@@ -28,7 +28,7 @@ export function ReaderControls({
         >
           Sign in
         </Link>{' '}
-        to bookmark this and save your next step.
+        to bookmark this.
       </p>
     );
   }
