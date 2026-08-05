@@ -23,7 +23,10 @@ export async function generateMetadata({
   const { publication } = await params;
   const pub = getPublication(publication);
   if (!pub) return {};
-  return { title: pub.name, description: pub.blurb };
+  // Title only. The blurb is each author's own bio, written for readers on the
+  // page — not a description of this archive, and not something to hand to
+  // link previews and search results.
+  return { title: pub.name };
 }
 
 export default async function ArchivePage({
