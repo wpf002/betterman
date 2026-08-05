@@ -8,7 +8,7 @@
  */
 import { SourceKind, prisma } from '@betterman/db';
 import { recoverHtml } from '../email/payload.js';
-import { normalizeSubstackPost } from '../substack/normalize.js';
+import { normalizeSubstackPost, scriptureRefsForArticle } from '../substack/normalize.js';
 import { ingestDevotionalEmail, upsertItem } from './upsert.js';
 
 export interface ReparseResult {
@@ -94,6 +94,9 @@ export async function reparseItem(itemId: string): Promise<ReparseResult> {
     item.source.apiHost ?? '',
   );
 
-  const result = await upsertItem({ id: item.sourceId }, normalized, { force: true });
+  const result = await upsertItem({ id: item.sourceId }, normalized, {
+    force: true,
+    scriptureRefs: scriptureRefsForArticle(normalized),
+  });
   return { ok: true, status: result.status };
 }

@@ -112,6 +112,20 @@ const REF_PATTERN =
   /\b((?:[1-3]\s*)?[A-Z][a-zA-Z]*(?:\s+of\s+[A-Z][a-zA-Z]+)?(?:\s+[A-Z][a-zA-Z]+)?)\.?\s+(\d{1,3})(?::(\d{1,3})(?:\s*[-–—]\s*(\d{1,3}))?)?/g;
 
 /**
+ * The same reference, but a verse is mandatory and no period may sit between
+ * the book and the chapter.
+ *
+ * Devotionals print their references in a labelled Scripture line, so the
+ * loose pattern is safe there. An essay is running prose, where the loose
+ * pattern reads "…so I told Mark. 3 weeks later" as Mark 3, and half the books
+ * of the Bible double as ordinary first names — Mark, John, James, Job. A
+ * Scripture index that invents a passage is worse than one that misses a bare
+ * chapter citation, so prose has to name a verse.
+ */
+const PROSE_REF_PATTERN =
+  /\b((?:[1-3]\s*)?[A-Z][a-zA-Z]*(?:\s+of\s+[A-Z][a-zA-Z]+)?(?:\s+[A-Z][a-zA-Z]+)?)\s+(\d{1,3}):(\d{1,3})(?:\s*[-–—]\s*(\d{1,3}))?/g;
+
+/**
  * Merges reference lists, keeping one row per passage and preferring the
  * primary reading when the same passage appears in both.
  */
@@ -132,13 +146,27 @@ export function mergeScriptureRefs(
   return [...byKey.values()];
 }
 
+/**
+ * Extracts every resolvable reference from an essay, requiring a verse.
+ *
+ * Substack articles carry no Scripture section, so without this they put
+ * nothing at all in the index no matter how much Bible they quote.
+ */
+export function parseScriptureRefsInProse(text: string): ParsedScriptureRef[] {
+  return collectRefs(text, PROSE_REF_PATTERN);
+}
+
 /** Extracts every resolvable reference from a line of text, deduped. */
 export function parseScriptureRefs(text: string): ParsedScriptureRef[] {
+  return collectRefs(text, REF_PATTERN);
+}
+
+function collectRefs(text: string, pattern: RegExp): ParsedScriptureRef[] {
   if (!text) return [];
   const out: ParsedScriptureRef[] = [];
   const seen = new Set<string>();
 
-  for (const match of text.matchAll(REF_PATTERN)) {
+  for (const match of text.matchAll(pattern)) {
     const [full, rawBook, rawChapter, rawStart, rawEnd] = match;
     if (!rawBook || !rawChapter) continue;
 

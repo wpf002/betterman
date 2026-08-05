@@ -11,7 +11,12 @@ import {
   sleep,
   RATE_LIMIT_MS,
 } from '../substack/archive.js';
-import { MIN_BODY_CHARS, isReadableArticle, normalizeSubstackPost } from '../substack/normalize.js';
+import {
+  MIN_BODY_CHARS,
+  isReadableArticle,
+  normalizeSubstackPost,
+  scriptureRefsForArticle,
+} from '../substack/normalize.js';
 import { storeRawPayload, upsertItem } from './upsert.js';
 
 export interface RunCounters {
@@ -138,7 +143,9 @@ export async function ingestSubstackSource(
       });
 
       const normalized = normalizeSubstackPost(entry, bodyHtml, host);
-      const result = await upsertItem(source, normalized);
+      const result = await upsertItem(source, normalized, {
+        scriptureRefs: scriptureRefsForArticle(normalized),
+      });
       if (result.outcome === 'created') counters.created += 1;
       else if (result.outcome === 'updated') counters.updated += 1;
       else counters.skipped += 1;

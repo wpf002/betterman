@@ -1,5 +1,9 @@
 import { createHash } from 'node:crypto';
 import { sanitizeArticleHtml, htmlToText } from '../html/sanitize.js';
+import {
+  parseScriptureRefsInProse,
+  type ParsedScriptureRef,
+} from '../devotional/scripture.js';
 import type { SubstackArchiveEntry } from './archive.js';
 
 /** The shape both sources normalize into before hitting the database. */
@@ -63,4 +67,18 @@ export function normalizeSubstackPost(
     // sanitizer must not read as the author having edited the post.
     contentHash: hashContent(bodyHtml),
   };
+}
+
+/**
+ * The passages an essay cites, for the Scripture index.
+ *
+ * An essay has no Scripture section to point at, so every reference is one
+ * quoted along the way — none of them lead. That is why they are all
+ * secondary: a devotional built on Psalm 90:12 should still come first under
+ * Psalm 90, ahead of an article that mentions it in passing.
+ */
+export function scriptureRefsForArticle(item: NormalizedItem): ParsedScriptureRef[] {
+  return parseScriptureRefsInProse(
+    [item.title, item.subtitle ?? '', item.contentText].join('\n'),
+  );
 }
