@@ -1,5 +1,10 @@
 import { ItemStatus, SourceKind, prisma } from '@betterman/db';
-import { parseScriptureRefsInProse } from '../devotional/scripture.js';
+import {
+  mergeScriptureRefs,
+  parseScriptureRefs,
+  parseScriptureRefsInProse,
+  type ParsedScriptureRef,
+} from '../devotional/scripture.js';
 
 /**
  * Rebuilds the Scripture index for articles already in the library.
@@ -22,8 +27,26 @@ export async function backfillArticleScriptureRefs(
   log: (message: string) => void = () => {},
 ): Promise<ScriptureBackfillResult> {
   const items = await prisma.item.findMany({
-    where: { status: ItemStatus.PUBLISHED, source: { kind: SourceKind.SUBSTACK } },
-    select: { id: true, title: true, subtitle: true, contentText: true },
+    where: { status: ItemStatus.PUBLISHED },
+    select: {
+      id: true,
+      title: true,
+      subtitle: true,
+      contentText: true,
+      source: { select: { kind: true } },
+      // A devotional's references come from its parsed sections, not its raw
+      // body, so that the passage it is BUILT on stays marked as primary.
+      devotional: {
+        select: {
+          scriptureRef: true,
+          thought: true,
+          reflect: true,
+          rightNextStep: true,
+          fightPlan: true,
+          prayer: true,
+        },
+      },
+    },
   });
 
   const result: ScriptureBackfillResult = { scanned: 0, changed: 0, refsWritten: 0 };
@@ -31,9 +54,11 @@ export async function backfillArticleScriptureRefs(
   for (const item of items) {
     result.scanned += 1;
 
-    const refs = parseScriptureRefsInProse(
-      [item.title, item.subtitle ?? '', item.contentText].join('\n'),
-    );
+    const refs = item.devotional
+      ? devotionalRefs(item.title, item.devotional)
+      : item.source.kind === SourceKind.SUBSTACK
+        ? parseScriptureRefsInProse([item.title, item.subtitle ?? '', item.contentText].join('\n'))
+        : [];
 
     const before = await prisma.scriptureRef.count({ where: { itemId: item.id } });
     if (before === 0 && refs.length === 0) continue;
@@ -53,4 +78,31 @@ export async function backfillArticleScriptureRefs(
   }
 
   return result;
+}
+
+/**
+ * The same split parseDevotional makes: the Scripture line leads, passages
+ * cited in the teaching follow. Kept in step with parse.ts deliberately — a
+ * backfill that indexed devotionals differently from ingest would leave the
+ * index depending on which one last touched a row.
+ */
+function devotionalRefs(
+  title: string,
+  d: {
+    scriptureRef: string | null;
+    thought: string | null;
+    reflect: string | null;
+    rightNextStep: string | null;
+    fightPlan: string | null;
+    prayer: string | null;
+  },
+): ParsedScriptureRef[] {
+  return mergeScriptureRefs(
+    parseScriptureRefs(d.scriptureRef ?? '').map((ref) => ({ ...ref, isPrimary: true })),
+    parseScriptureRefs(
+      [title, d.thought, d.reflect, d.rightNextStep, d.fightPlan, d.prayer]
+        .filter(Boolean)
+        .join('\n'),
+    ),
+  );
 }
