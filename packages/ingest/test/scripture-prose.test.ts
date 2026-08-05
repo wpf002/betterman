@@ -27,15 +27,29 @@ describe('parseScriptureRefsInProse', () => {
     expect(ref).toMatchObject({ book: 'John', chapter: 4, verseStart: 11, verseEnd: 15 });
   });
 
-  it('does not read a name followed by a number as a passage', () => {
+  it('does not read a name followed by a count as a passage', () => {
     for (const line of [
       'So I told Mark. 3 weeks later he called.',
       'John 3 of the men left before the end.',
       'I met James 2 days ago.',
       'Job 1 was the hardest I ever had.',
+      'Acts 2 as a reminder that it worked.',
     ]) {
       expect(parseScriptureRefsInProse(line), line).toEqual([]);
     }
+  });
+
+  it('still reads a bare chapter that is genuinely a citation', () => {
+    // Both of these are real sentences from the library that the first cut of
+    // this parser dropped. A citation is followed by punctuation or a new
+    // clause; a count is followed by the noun it counts.
+    expect(
+      parseScriptureRefsInProse('In Mark 4, Jesus lets His disciples sail into a storm.'),
+    ).toMatchObject([{ book: 'Mark', chapter: 4, verseStart: null }]);
+
+    expect(
+      parseScriptureRefsInProse('the Good Shepherd who lays down His life for the sheep John 10.'),
+    ).toMatchObject([{ book: 'John', chapter: 10 }]);
   });
 
   it('rejects a period between the book and the chapter', () => {

@@ -112,18 +112,26 @@ const REF_PATTERN =
   /\b((?:[1-3]\s*)?[A-Z][a-zA-Z]*(?:\s+of\s+[A-Z][a-zA-Z]+)?(?:\s+[A-Z][a-zA-Z]+)?)\.?\s+(\d{1,3})(?::(\d{1,3})(?:\s*[-–—]\s*(\d{1,3}))?)?/g;
 
 /**
- * The same reference, but a verse is mandatory and no period may sit between
- * the book and the chapter.
+ * The same reference, minus the optional period between book and chapter.
  *
- * Devotionals print their references in a labelled Scripture line, so the
- * loose pattern is safe there. An essay is running prose, where the loose
- * pattern reads "…so I told Mark. 3 weeks later" as Mark 3, and half the books
- * of the Bible double as ordinary first names — Mark, John, James, Job. A
- * Scripture index that invents a passage is worse than one that misses a bare
- * chapter citation, so prose has to name a verse.
+ * Devotionals print their references on a labelled Scripture line, so the
+ * loose pattern is safe there. An essay is running prose, where "…so I told
+ * Mark. 3 weeks later" reads as Mark 3 — and Mark, John, James and Job are all
+ * ordinary first names. Dropping the period costs nothing (essays spell books
+ * out) and removes that whole class of misreading.
  */
 const PROSE_REF_PATTERN =
-  /\b((?:[1-3]\s*)?[A-Z][a-zA-Z]*(?:\s+of\s+[A-Z][a-zA-Z]+)?(?:\s+[A-Z][a-zA-Z]+)?)\s+(\d{1,3}):(\d{1,3})(?:\s*[-–—]\s*(\d{1,3}))?/g;
+  /\b((?:[1-3]\s*)?[A-Z][a-zA-Z]*(?:\s+of\s+[A-Z][a-zA-Z]+)?(?:\s+[A-Z][a-zA-Z]+)?)\s+(\d{1,3})(?::(\d{1,3})(?:\s*[-–—]\s*(\d{1,3}))?)?/g;
+
+/**
+ * A chapter with no verse, in prose, followed by an ordinary lowercase word.
+ *
+ * "I met James 2 days ago" and "John 3 of the men left" are not citations;
+ * "In Mark 4, Jesus lets them sail into a storm" and "the sheep John 10." are.
+ * What separates them is what comes next: a real citation is followed by
+ * punctuation or a new clause, never by the noun the number was counting.
+ */
+const COUNTED_NOUN = /^\s+[a-z]/;
 
 /**
  * Merges reference lists, keeping one row per passage and preferring the
@@ -153,15 +161,15 @@ export function mergeScriptureRefs(
  * nothing at all in the index no matter how much Bible they quote.
  */
 export function parseScriptureRefsInProse(text: string): ParsedScriptureRef[] {
-  return collectRefs(text, PROSE_REF_PATTERN);
+  return collectRefs(text, PROSE_REF_PATTERN, true);
 }
 
 /** Extracts every resolvable reference from a line of text, deduped. */
 export function parseScriptureRefs(text: string): ParsedScriptureRef[] {
-  return collectRefs(text, REF_PATTERN);
+  return collectRefs(text, REF_PATTERN, false);
 }
 
-function collectRefs(text: string, pattern: RegExp): ParsedScriptureRef[] {
+function collectRefs(text: string, pattern: RegExp, prose: boolean): ParsedScriptureRef[] {
   if (!text) return [];
   const out: ParsedScriptureRef[] = [];
   const seen = new Set<string>();
@@ -169,6 +177,11 @@ function collectRefs(text: string, pattern: RegExp): ParsedScriptureRef[] {
   for (const match of text.matchAll(pattern)) {
     const [full, rawBook, rawChapter, rawStart, rawEnd] = match;
     if (!rawBook || !rawChapter) continue;
+
+    // A bare chapter in prose has to prove it is a citation and not a count.
+    if (prose && !rawStart && match.index !== undefined) {
+      if (COUNTED_NOUN.test(text.slice(match.index + full.length))) continue;
+    }
 
     // Try the longest candidate first ("Song of Solomon" before "Song").
     const candidates = [rawBook, rawBook.split(/\s+/).slice(-2).join(' '), rawBook.split(/\s+/).pop() ?? ''];
