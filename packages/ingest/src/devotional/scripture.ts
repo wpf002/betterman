@@ -104,12 +104,28 @@ export interface ParsedScriptureRef {
 }
 
 /**
- * Matches "John 4:11-15", "1 Thessalonians 5:18", "Psalm 90:12", "Romans 8".
- * En-dashes and em-dashes are accepted as verse-range separators, because the
- * emails use them interchangeably with hyphens.
+ * The book: an optional numeral ("1 Samuel"), or a name joined by "of"
+ * ("Song of Solomon").
+ *
+ * The leading `(?:[A-Z][a-zA-Z]*\s+)?` is a word we expect to THROW AWAY — the
+ * "In" of "In Mark 4". It has to be matched rather than ignored: without it
+ * the engine reads "Read 1 Samuel 16:11" as book "Read", chapter 1, then
+ * resumes at "Samuel 16:11" — and bare "Samuel" is not a book, so a perfectly
+ * ordinary citation parsed to nothing at all. Being optional, it backtracks
+ * out of the way for "Psalm 90:12".
  */
-const REF_PATTERN =
-  /\b((?:[1-3]\s*)?[A-Z][a-zA-Z]*(?:\s+of\s+[A-Z][a-zA-Z]+)?(?:\s+[A-Z][a-zA-Z]+)?)\.?\s+(\d{1,3})(?::(\d{1,3})(?:\s*[-–—]\s*(\d{1,3}))?)?/g;
+const BOOK_GROUP = String.raw`(?:[A-Z][a-zA-Z]*\s+)?((?:[1-3]\s*)?[A-Z][a-zA-Z]*(?:\s+of\s+[A-Z][a-zA-Z]+)?)`;
+/** ":11", optionally "–15". En and em dashes both appear as range separators. */
+const VERSE_GROUP = String.raw`(?::(\d{1,3})(?:\s*[-–—]\s*(\d{1,3}))?)?`;
+
+/**
+ * Matches "John 4:11-15", "1 Thessalonians 5:18", "Psalm 90:12", "Romans 8",
+ * and the abbreviated "Matt. 5:3".
+ *
+ * The `d` flag is required: displayRef is sliced from the book capture's own
+ * offset, which is how "In Mark 4" is stored as "Mark 4".
+ */
+const REF_PATTERN = new RegExp(`\\b${BOOK_GROUP}\\.?\\s+(\\d{1,3})${VERSE_GROUP}`, 'gd');
 
 /**
  * The same reference, minus the optional period between book and chapter.
@@ -120,8 +136,7 @@ const REF_PATTERN =
  * ordinary first names. Dropping the period costs nothing (essays spell books
  * out) and removes that whole class of misreading.
  */
-const PROSE_REF_PATTERN =
-  /\b((?:[1-3]\s*)?[A-Z][a-zA-Z]*(?:\s+of\s+[A-Z][a-zA-Z]+)?(?:\s+[A-Z][a-zA-Z]+)?)\s+(\d{1,3})(?::(\d{1,3})(?:\s*[-–—]\s*(\d{1,3}))?)?/g;
+const PROSE_REF_PATTERN = new RegExp(`\\b${BOOK_GROUP}\\s+(\\d{1,3})${VERSE_GROUP}`, 'gd');
 
 /**
  * A chapter with no verse, in prose, followed by an ordinary lowercase word.
@@ -203,10 +218,35 @@ function collectRefs(text: string, pattern: RegExp, prose: boolean): ParsedScrip
     if (seen.has(key)) continue;
     seen.add(key);
 
-    out.push({ book, chapter, verseStart, verseEnd, displayRef: full.trim(), isPrimary: false });
+    // Print from where the BOOK starts, not where the match does, so the
+    // discarded lead-in word never reaches the index.
+    const bookAt = match.indices?.[1]?.[0];
+    const displayRef =
+      bookAt !== undefined && match.index !== undefined
+        ? full.slice(bookAt - match.index).trim()
+        : full.trim();
+
+    out.push({ book, chapter, verseStart, verseEnd, displayRef, isPrimary: false });
   }
 
-  return out;
+  return prose ? dropChaptersCoveredByAVerse(out) : out;
+}
+
+/**
+ * Drops a bare chapter when the same piece already cites a verse inside it.
+ *
+ * An essay that quotes Mark 5:30 and also says "in Mark 5" is citing one
+ * passage, not two, and listing it twice under Mark is just noise. The verse
+ * is the more useful of the pair, so it is the one that stays.
+ */
+function dropChaptersCoveredByAVerse(refs: ParsedScriptureRef[]): ParsedScriptureRef[] {
+  const withVerses = new Set(
+    refs.filter((r) => r.verseStart !== null).map((r) => `${r.book}|${r.chapter}`),
+  );
+
+  return refs.filter(
+    (ref) => ref.verseStart !== null || !withVerses.has(`${ref.book}|${ref.chapter}`),
+  );
 }
 
 /**
