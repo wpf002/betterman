@@ -21,7 +21,8 @@ export const PUBLICATIONS: readonly Publication[] = [
     key: SourceKey.BETTERMORNINGS,
     name: 'BetterMornings',
     cadence: 'Weekday mornings',
-    blurb: 'The daily devotional from BetterMan.',
+    blurb:
+      'Begin your day with an intentional time focused on what is most important: Jesus Christ. Each weekday, you will be gifted a short devotional focused on faithfully living as a Christ follower. BetterMornings is one of our many gifts to you, an encouragement to start the day.',
     homeUrl: 'https://betterman.com/daily-devotional',
   },
   {
