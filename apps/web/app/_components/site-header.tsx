@@ -29,18 +29,15 @@ export async function SiteHeader() {
           <BettermanLockup className="h-6 w-auto text-ink" />
         </Link>
 
+        {/* The same destinations the menu carries, in the same order — Read
+            included. Dropping it on desktop left the logo as the only way home,
+            which is not obviously a link. */}
         <nav aria-label="Primary" className="hidden items-center gap-5 sm:flex">
-          {destinations
-            .filter((destination) => destination.href !== '/')
-            .map((destination) => (
-              <Link
-                key={destination.href}
-                href={destination.href}
-                className="bm-eyebrow hover:text-ink"
-              >
-                {destination.label}
-              </Link>
-            ))}
+          {destinations.map((destination) => (
+            <Link key={destination.href} href={destination.href} className="bm-eyebrow hover:text-ink">
+              {destination.label}
+            </Link>
+          ))}
         </nav>
 
         <NavMenu destinations={destinations} />

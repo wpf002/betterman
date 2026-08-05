@@ -87,19 +87,24 @@ export default async function HomePage() {
             <li key={pub.slug} className="border-b border-hair last:border-b-0">
               {/* The negative margin lets the tap highlight reach the page
                   gutter rather than hugging the words. */}
+              {/* Centred from `sm` up so the three sources sit under the
+                  centred hero rather than starting again at the left gutter.
+                  On a phone they stay left-aligned: a centred ragged block is
+                  harder to scan, and there is no wide hero above it to answer
+                  to. */}
               <Link
                 href={`/${pub.slug}`}
-                className="group -mx-4 block rounded-sm px-4 py-7 transition-colors hover:bg-paper/70 active:bg-paper sm:-mx-5 sm:px-5 sm:py-9"
+                className="group -mx-4 block rounded-sm px-4 py-7 transition-colors hover:bg-paper/70 active:bg-paper sm:-mx-5 sm:px-5 sm:py-9 sm:text-center"
               >
                 <h2 className="text-display-sm group-hover:text-clay-deep">{pub.name}</h2>
 
                 {entry ? (
-                  <p className="mt-3 max-w-measure text-mute">
+                  <p className="mt-3 max-w-measure text-mute sm:mx-auto">
                     <span className="text-ink">{entry.title}</span>
                     {dateLabel ? <span className="whitespace-nowrap"> · {dateLabel}</span> : null}
                   </p>
                 ) : (
-                  <p className="mt-3 max-w-measure text-mute">{pub.blurb}</p>
+                  <p className="mt-3 max-w-measure text-mute sm:mx-auto">{pub.blurb}</p>
                 )}
               </Link>
             </li>
